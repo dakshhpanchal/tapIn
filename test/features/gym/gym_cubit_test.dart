@@ -542,4 +542,55 @@ void main() {
       expect(sessionSetCount(done.session), 1);
     },
   );
+
+  test(
+    'an edited workout is saved in place, re-sorted, and survives a restart',
+    () async {
+      final cubit = await loaded();
+      final bench = cubit.state.exercises.first;
+      Future<WorkoutSession> logOn(DateTime day) async {
+        await cubit.startEmptyWorkout();
+        await cubit.addExercise(bench);
+        await cubit.updateSet(
+          0,
+          0,
+          (s) => s.copyWith(weightKg: 60, reps: 8, done: true),
+        );
+        final done = (await cubit.finishWorkout())!.session;
+        // Backdate it, as a user logging it late would.
+        final moved = done.copyWith(
+          startedAt: day,
+          endedAt: day.add(const Duration(minutes: 40)),
+        );
+        await cubit.updateSession(moved);
+        return moved;
+      }
+
+      final older = await logOn(DateTime(2026, 1, 5, 18));
+      final newer = await logOn(DateTime(2026, 2, 5, 18));
+      expect(cubit.state.sessions.map((s) => s.id), [newer.id, older.id]);
+
+      // Fix the older one: more reps, a new name, and a date after the other.
+      final fixed = older.copyWith(
+        name: 'Corrected',
+        startedAt: DateTime(2026, 3, 1, 9),
+        endedAt: DateTime(2026, 3, 1, 9, 40),
+        exercises: [
+          older.exercises.single.copyWith(
+            sets: [const SetEntry(weightKg: 62.5, reps: 9, done: true)],
+          ),
+        ],
+      );
+      await cubit.updateSession(fixed);
+      expect(cubit.state.sessions.map((s) => s.id), [older.id, newer.id]);
+      expect(cubit.state.sessions, hasLength(2));
+
+      final restarted = await loaded();
+      final back = restarted.state.sessions.first;
+      expect(back.name, 'Corrected');
+      expect(back.exercises.single.sets.single.reps, 9);
+      expect(back.exercises.single.sets.single.weightKg, 62.5);
+      expect(back.duration.inMinutes, 40);
+    },
+  );
 }

@@ -119,6 +119,7 @@ class GymCubit extends Cubit<GymState> {
       // The machine setup usually stays the same, so it carries over; the
       // note was for this session, and the screen shows it from last time.
       setting: last?.setting ?? template.setting,
+      planNote: template.planNote,
       note: '',
       sets: [
         for (var i = 0; i < planned; i++)
@@ -273,6 +274,18 @@ class GymCubit extends Cubit<GymState> {
   }
 
   // History, routines and exercises -------------------------------------------
+
+  /// Saves a corrected finished workout in place of the one with the same id.
+  Future<void> updateSession(WorkoutSession updated) async {
+    await _repo.saveSession(updated);
+    emit(
+      state.copyWith(
+        sessions: [
+          for (final s in state.sessions) s.id == updated.id ? updated : s,
+        ]..sort((a, b) => b.startedAt.compareTo(a.startedAt)),
+      ),
+    );
+  }
 
   Future<void> deleteSession(String id) async {
     await _repo.deleteSession(id);

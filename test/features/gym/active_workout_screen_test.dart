@@ -12,6 +12,8 @@ import 'package:opennutritracker/features/gym/domain/gym_models.dart';
 import 'package:opennutritracker/features/gym/domain/gym_transfer.dart';
 import 'package:opennutritracker/features/gym/presentation/active_workout_screen.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_page.dart';
+import 'package:opennutritracker/features/gym/presentation/session_detail_screen.dart';
+import 'package:opennutritracker/features/gym/presentation/session_edit_screen.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_cubit.dart';
 
 class _FakeConfig extends Fake implements GetConfigUsecase {
@@ -156,10 +158,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Bench Press'));
     await tester.pumpAndSettle();
-    expect(find.text('3 sets'), findsOneWidget);
-    await tester.tap(find.byTooltip('More sets'));
+    expect(find.byTooltip('Delete set'), findsNWidgets(3)); // starts with 3
+    await tester.tap(find.text('Add set'));
     await tester.pump();
-    expect(find.text('4 sets'), findsOneWidget);
+    expect(find.byTooltip('Delete set'), findsNWidgets(4));
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
@@ -363,4 +365,262 @@ void main() {
     expect(find.byType(Checkbox), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
+
+  /// A home screen with one button that opens the workout, the way the Gym tab
+  /// does, so Finish has somewhere to go back to.
+  Widget homeWithWorkoutButton() => Scaffold(
+    body: Builder(
+      builder: (context) => Center(
+        child: ElevatedButton(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const ActiveWorkoutScreen(),
+            ),
+          ),
+          child: const Text('Open workout'),
+        ),
+      ),
+    ),
+  );
+
+  testWidgets('finishing lands on the summary, never on a blank screen', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360 * 3, 900 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await cubit.updateSet(
+      0,
+      0,
+      (s) => s.copyWith(weightKg: 60, reps: 8, done: true),
+    );
+
+    await tester.pumpWidget(app(home: homeWithWorkoutButton()));
+    await tester.tap(find.text('Open workout'));
+    await tester.pumpAndSettle();
+    expect(find.text('Finish'), findsOneWidget);
+
+    await tester.tap(find.text('Finish'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Finish'));
+    await tester.pumpAndSettle();
+
+    // The summary is showing, and the finished workout screen is gone.
+    expect(find.text('Workout complete'), findsOneWidget);
+    expect(find.byType(ActiveWorkoutScreen), findsNothing);
+    expect(cubit.state.active, isNull);
+    expect(cubit.state.sessions, hasLength(1));
+
+    // Done goes back to where the workout was opened from.
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(find.text('Open workout'), findsOneWidget);
+    expect(find.text('Workout complete'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('discarding a workout leaves the screen cleanly', (tester) async {
+    tester.view.physicalSize = const Size(360 * 3, 900 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(app(home: homeWithWorkoutButton()));
+    await tester.tap(find.text('Open workout'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Show menu')); // the app bar's menu
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Discard workout'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Discard'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ActiveWorkoutScreen), findsNothing);
+    expect(find.text('Open workout'), findsOneWidget);
+    expect(cubit.state.active, isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('a logged workout can be edited and saved', (tester) async {
+    tester.view.physicalSize = const Size(360 * 3, 900 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    // A finished workout: Bench Press, 60 x 8 and 60 x 7.
+    await cubit.updateSet(
+      0,
+      0,
+      (s) => s.copyWith(weightKg: 60, reps: 8, done: true),
+    );
+    await cubit.addSet(0);
+    await cubit.updateSet(
+      0,
+      1,
+      (s) => s.copyWith(weightKg: 60, reps: 7, done: true),
+    );
+    await cubit.finishWorkout();
+    final logged = cubit.state.sessions.single;
+
+    await tester.pumpWidget(app(home: SessionDetailScreen(session: logged)));
+    await tester.pumpAndSettle();
+    expect(find.text('60 kg × 8'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Edit workout'));
+    await tester.pumpAndSettle();
+    // name, then per set weight + reps: set 1 = fields 1,2; set 2 = 3,4.
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), 'Chest day');
+    await tester.enterText(fields.at(2), '10'); // set 1: 8 -> 10 reps
+    await tester.tap(find.text('Add set'));
+    await tester.pump();
+    // The new third set starts from the one above (60 x 7); make it 5 reps.
+    await tester.enterText(find.byType(TextField).at(6), '5');
+    // Drop the second set (60 x 7).
+    await tester.tap(find.byTooltip('Delete set').at(1));
+    await tester.pump();
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    final saved = cubit.state.sessions.single;
+    expect(saved.id, logged.id);
+    expect(saved.name, 'Chest day');
+    expect(saved.exercises.single.sets.map((s) => s.reps), [10, 5]);
+    expect(saved.exercises.single.sets.every((s) => s.weightKg == 60), isTrue);
+    // The detail screen behind shows the corrected numbers.
+    expect(find.text('Chest day'), findsWidgets);
+    expect(find.text('60 kg × 10'), findsOneWidget);
+    expect(find.text('60 kg × 8'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('an edit with no sets left is refused, not saved', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360 * 3, 900 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await cubit.updateSet(
+      0,
+      0,
+      (s) => s.copyWith(weightKg: 60, reps: 8, done: true),
+    );
+    await cubit.finishWorkout();
+    final logged = cubit.state.sessions.single;
+
+    await tester.pumpWidget(app(home: SessionEditScreen(session: logged)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Delete set'));
+    await tester.pump();
+    await tester.tap(find.text('Save'));
+    await tester.pump();
+
+    expect(find.textContaining('Add at least one set'), findsOneWidget);
+    expect(cubit.state.sessions.single.exercises.single.sets, hasLength(1));
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets(
+    'adding an exercise to a plan takes weights, a setting and a note',
+    (tester) async {
+      tester.view.physicalSize = const Size(360 * 3, 1000 * 3);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await cubit.discardWorkout();
+
+      await tester.pumpWidget(app(home: const Scaffold(body: GymPage())));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('New workout'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, 'Push day');
+      await tester.tap(find.text('Add exercise'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Bench Press'));
+      await tester.pumpAndSettle();
+
+      // Fields in order: name, then 3 weights, setting, note.
+      final fields = find.byType(TextField);
+      expect(find.text('Machine setting'), findsOneWidget);
+      expect(find.text('Note (shown during the workout)'), findsOneWidget);
+      await tester.enterText(fields.at(1), '40');
+      await tester.enterText(fields.at(2), '45');
+      await tester.enterText(fields.at(3), '50');
+      await tester.enterText(fields.at(4), 'Seat 4, pin 7');
+      await tester.enterText(fields.at(5), 'Keep elbows tucked');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      final planned = cubit.state.routines.single.exercises.single;
+      expect(planned.sets.map((s) => s.weightKg), [40, 45, 50]);
+      expect(planned.setting, 'Seat 4, pin 7');
+      expect(planned.planNote, 'Keep elbows tucked');
+      expect(planned.note, isEmpty); // the note for next time stays separate
+
+      // Reopening the plan shows what was saved.
+      await tester.tap(find.byTooltip('Show menu').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit'));
+      await tester.pumpAndSettle();
+      expect(find.text('Seat 4, pin 7'), findsOneWidget);
+      expect(find.text('Keep elbows tucked'), findsOneWidget);
+      expect(find.text('45'), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      // Starting it carries the weights, setting and plan note into the workout.
+      await tester.tap(find.text('Start'));
+      await tester.pumpAndSettle();
+      final active = cubit.state.active!.exercises.single;
+      expect(active.sets.map((s) => s.weightKg), [40, 45, 50]);
+      expect(active.setting, 'Seat 4, pin 7');
+      expect(active.planNote, 'Keep elbows tucked');
+      expect(find.text('Plan: Keep elbows tucked'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'the exercises of a logged workout can be reordered while editing',
+    (tester) async {
+      tester.view.physicalSize = const Size(360 * 3, 900 * 3);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      // A finished workout with Bench Press, then Squat.
+      final squat = await cubit.createExercise('Squat');
+      await cubit.addExercise(squat);
+      await cubit.updateSet(
+        0,
+        0,
+        (s) => s.copyWith(weightKg: 60, reps: 8, done: true),
+      );
+      await cubit.updateSet(
+        1,
+        0,
+        (s) => s.copyWith(weightKg: 80, reps: 5, done: true),
+      );
+      await cubit.finishWorkout();
+      final logged = cubit.state.sessions.single;
+      expect(logged.exercises.map((e) => e.name), ['Bench Press', 'Squat']);
+
+      await tester.pumpWidget(app(home: SessionEditScreen(session: logged)));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Reorder exercises'));
+      await tester.pumpAndSettle();
+      // Drag Bench Press's handle down past Squat, then confirm.
+      await tester.drag(
+        find.byIcon(Icons.drag_handle_rounded).first,
+        const Offset(0, 120),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      final saved = cubit.state.sessions.single;
+      expect(saved.exercises.map((e) => e.name), ['Squat', 'Bench Press']);
+      // Each exercise keeps its own sets.
+      expect(saved.exercises.first.sets.single.weightKg, 80);
+      expect(saved.exercises.last.sets.single.weightKg, 60);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 }

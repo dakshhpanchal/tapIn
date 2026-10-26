@@ -153,4 +153,31 @@ void main() {
     expect(back.sessions.single.exercises.single.setting, 'Flat Bench');
     expect(back.warnings, isEmpty);
   });
+
+  test('a note on a workout exercise is kept as its plan note, both ways', () {
+    final plan = _parse(
+      '{"workouts":[{"name":"A","exercises":['
+      '{"exercise":"Row","note":"Pull to the hip","setting":"Seat 3",'
+      '"sets":[{"weight":30,"reps":0}]}]}]}',
+    );
+    final row = plan.workouts.single.exercises.single;
+    expect(row.planNote, 'Pull to the hip');
+    expect(row.note, isEmpty); // not the note for next time
+    expect(row.setting, 'Seat 3');
+
+    final json = exportGymJson(
+      exercises: plan.newExercises,
+      routines: plan.workouts,
+      sessions: const [],
+    );
+    expect(json, contains('"note": "Pull to the hip"'));
+    final back = parseGymImport(
+      json,
+      exercises: const [],
+      routines: const [],
+      sessions: const [],
+      newId: _id,
+    );
+    expect(back.workouts.single.exercises.single.planNote, 'Pull to the hip');
+  });
 }

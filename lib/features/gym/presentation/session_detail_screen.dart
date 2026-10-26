@@ -7,12 +7,31 @@ import 'package:opennutritracker/features/gym/domain/gym_models.dart';
 import 'package:opennutritracker/features/gym/presentation/exercise_progress_screen.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_cubit.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_format.dart';
+import 'package:opennutritracker/features/gym/presentation/session_edit_screen.dart';
 
 /// A finished workout: totals and every set, with options to repeat it, save
 /// it as a routine, or delete it.
 class SessionDetailScreen extends StatelessWidget {
+  /// The workout as it was when opened; the latest saved version is shown
+  /// instead once it is found, so an edit shows up here straight away.
   final WorkoutSession session;
   const SessionDetailScreen({super.key, required this.session});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<GymCubit, GymState>(
+      builder: (context, state) => _SessionDetail(
+        session:
+            state.sessions.where((s) => s.id == session.id).firstOrNull ??
+            session,
+      ),
+    );
+  }
+}
+
+class _SessionDetail extends StatelessWidget {
+  final WorkoutSession session;
+  const _SessionDetail({required this.session});
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +42,11 @@ class SessionDetailScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(session.name),
         actions: [
+          IconButton(
+            tooltip: 'Edit workout',
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () => _edit(context),
+          ),
           PopupMenuButton<String>(
             onSelected: (v) async {
               switch (v) {
@@ -212,6 +236,14 @@ class SessionDetailScreen extends StatelessWidget {
         context,
       ).showSnackBar(SnackBar(content: Text('Saved "$name".')));
     }
+  }
+
+  void _edit(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SessionEditScreen(session: session),
+      ),
+    );
   }
 
   Future<void> _delete(BuildContext context, GymCubit cubit) async {

@@ -27,6 +27,7 @@ class ActiveWorkoutScreen extends StatefulWidget {
 
 class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   Timer? _clock;
+  WorkoutSession? _lastSession;
 
   @override
   void initState() {
@@ -46,14 +47,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<GymCubit>();
-    return BlocConsumer<GymCubit, GymState>(
-      // The workout can end from elsewhere (finish, discard): leave then.
-      listenWhen: (a, b) => a.active != null && b.active == null,
-      listener: (context, state) {
-        if (Navigator.of(context).canPop()) Navigator.of(context).pop();
-      },
+    return BlocBuilder<GymCubit, GymState>(
       builder: (context, state) {
-        final session = state.active;
+        // Finishing or discarding clears the active workout; this screen leaves
+        // on its own right after (see _finish and _discard). Until the leaving
+        // animation is done it keeps showing the last workout, not a blank page.
+        final active = state.active;
+        if (active != null) _lastSession = active;
+        final session = active ?? _lastSession;
         if (session == null) return const Scaffold();
         return PopScope(
           // Leaving keeps the workout; the gym tab offers "Resume".
@@ -204,7 +205,10 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         ],
       ),
     );
-    if (ok == true) await cubit.discardWorkout();
+    if (ok != true || !context.mounted) return;
+    final navigator = Navigator.of(context);
+    await cubit.discardWorkout();
+    navigator.pop();
   }
 
   Future<void> _finish(
@@ -246,13 +250,18 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     if (ok != true || !context.mounted) return;
     final navigator = Navigator.of(context);
     final result = await cubit.finishWorkout();
-    if (result != null) {
-      navigator.push(
-        MaterialPageRoute<void>(
-          builder: (_) => WorkoutSummaryScreen(finished: result),
-        ),
-      );
+    if (result == null) {
+      // Nothing was done, so the workout was discarded: just leave.
+      navigator.pop();
+      return;
     }
+    // Replace this screen with the summary, so back goes to where you came
+    // from rather than to a finished workout.
+    navigator.pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => WorkoutSummaryScreen(finished: result),
+      ),
+    );
   }
 }
 
@@ -379,6 +388,24 @@ class _ExerciseCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (exercise.planNote.trim().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: Dimens.spacing8),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(Dimens.spacing8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Plan: ${exercise.planNote.trim()}',
+                    style: text.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSecondaryContainer,
+                    ),
+                  ),
+                ),
+              ),
             if (previous != null && previous!.note.trim().isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: Dimens.spacing8),

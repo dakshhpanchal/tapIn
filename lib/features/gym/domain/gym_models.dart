@@ -132,6 +132,10 @@ class WorkoutExercise {
   /// Free text for the machine or equipment setup (seat height, pin, grip).
   final String setting;
 
+  /// A standing note from the workout plan ("keep elbows tucked"), shown
+  /// while you do the exercise. Separate from [note], which is for next time.
+  final String planNote;
+
   /// Weights are machine plates; `SetEntry.weightKg` then holds the plate
   /// count as is, with no kg/lb conversion.
   final bool plates;
@@ -148,6 +152,7 @@ class WorkoutExercise {
     this.sets = const [],
     this.note = '',
     this.setting = '',
+    this.planNote = '',
     this.plates = false,
     this.skipped = false,
   });
@@ -166,6 +171,7 @@ class WorkoutExercise {
     List<SetEntry>? sets,
     String? note,
     String? setting,
+    String? planNote,
     bool? plates,
     bool? skipped,
   }) => WorkoutExercise(
@@ -176,6 +182,7 @@ class WorkoutExercise {
     sets: sets ?? this.sets,
     note: note ?? this.note,
     setting: setting ?? this.setting,
+    planNote: planNote ?? this.planNote,
     plates: plates ?? this.plates,
     skipped: skipped ?? this.skipped,
   );
@@ -188,6 +195,7 @@ class WorkoutExercise {
     'sets': [for (final s in sets) s.toJson()],
     'note': note,
     'setting': setting,
+    if (planNote.isNotEmpty) 'planNote': planNote,
     'plates': plates,
     if (skipped) 'skipped': true,
   };
@@ -204,6 +212,7 @@ class WorkoutExercise {
         ],
         note: (json['note'] as String?) ?? '',
         setting: (json['setting'] as String?) ?? '',
+        planNote: (json['planNote'] as String?) ?? '',
         plates: (json['plates'] as bool?) ?? false,
         skipped: (json['skipped'] as bool?) ?? false,
       );
@@ -232,13 +241,14 @@ class WorkoutSession {
 
   WorkoutSession copyWith({
     String? name,
+    DateTime? startedAt,
     DateTime? endedAt,
     String? notes,
     List<WorkoutExercise>? exercises,
   }) => WorkoutSession(
     id: id,
     name: name ?? this.name,
-    startedAt: startedAt,
+    startedAt: startedAt ?? this.startedAt,
     endedAt: endedAt ?? this.endedAt,
     notes: notes ?? this.notes,
     exercises: exercises ?? this.exercises,

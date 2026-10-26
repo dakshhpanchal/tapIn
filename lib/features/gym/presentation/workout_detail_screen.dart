@@ -70,6 +70,16 @@ class WorkoutDetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: Dimens.spacing8),
                         Text(_setsText(e, state.useLb), style: text.bodyMedium),
+                        if (e.planNote.trim().isNotEmpty) ...[
+                          const SizedBox(height: Dimens.spacing4),
+                          Text(
+                            e.planNote.trim(),
+                            style: text.bodySmall?.copyWith(
+                              color: mutedColor(context),
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),

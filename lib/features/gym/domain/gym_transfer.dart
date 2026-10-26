@@ -121,6 +121,7 @@ String exportGymJson({
                 'exercise': e.name,
                 if (e.plates) 'plates': true,
                 if (e.setting.isNotEmpty) 'setting': e.setting,
+                if (e.planNote.isNotEmpty) 'note': e.planNote,
                 'sets': plannedSets(e.sets),
               },
           ],
@@ -298,6 +299,7 @@ GymImportPlan parseGymImport(
           sets: list.isEmpty ? const [SetEntry()] : list,
         ).copyWith(
           setting: '${map['setting'] ?? ''}'.trim(),
+          planNote: '${map['note'] ?? ''}'.trim(),
           plates: usesPlates,
         ),
       );
@@ -502,6 +504,7 @@ Rules:
 - "sets" is a list with one object per set: {"weight": <number>, "reps": 0}. Give every set its own weight even when they are equal. Leave "reps" at 0 unless I wrote reps.
 - Weights are kilograms. If I write weights as plates (for example "8p"), set "plates": true on that exercise and use the plate number as the weight.
 - Machine settings or other notes in braces go in "setting" as plain text. Omit "setting" if there is none.
+- An optional "note" on a workout exercise is a standing tip shown while doing it (for example "keep elbows tucked"). Omit it if there is none.
 - "history" entries (only if I give dated sessions): {"name": "...", "date": "YYYY-MM-DDTHH:MM:SS", "durationMinutes": <number>, "exercises": [{"exercise": "...", "sets": [{"weight": <number>, "reps": <number>}]}]}.
 
 Example:
