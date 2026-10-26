@@ -1,15 +1,16 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:opennutritracker/core/utils/navigation_options.dart';
 
-/// First screen shown on launch: the tapIn icon pops in on the icon's own navy,
-/// a tap ripple spreads out from the ring twice, and the name fades in. After
-/// that it routes on to the main screen (returning user) or onboarding (first
-/// run).
+/// First screen shown on launch, on black: the tapIn icon pops in, a burst of
+/// coral rays comes out of the top of the ring as if it were tapped, and a
+/// soft ripple spreads. After that it routes on to the main
+/// screen (returning user) or onboarding (first run).
 ///
 /// The native launch screen (Android `launch_background` and the Android 12
-/// splash) is the same navy and shows the same icon, so the hand-off into this
+/// splash) is black too and shows the same icon, so the hand-off into this
 /// animated splash is seamless.
 class SplashScreen extends StatefulWidget {
   /// Whether the user has already completed onboarding. Decides where the
@@ -24,19 +25,17 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  static const _navy = Color(0xFF0D1946);
   static const _coral = Color(0xFFFF9A7C);
-  static const _iconSize = 280.0;
+  static const _iconSize = 300.0;
   // Where the coral ring's centre sits in the icon image, as a fraction of it.
   static const _ringCentre = Offset(0.493, 0.392);
 
   static const _startDelay = Duration(milliseconds: 250);
-  static const _duration = Duration(milliseconds: 1700);
+  static const _duration = Duration(milliseconds: 1600);
   static const _hold = Duration(milliseconds: 250);
 
   late final AnimationController _controller;
   late final Animation<double> _icon;
-  late final Animation<double> _name;
   Timer? _startTimer;
   bool _navigated = false;
 
@@ -51,8 +50,7 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
     _controller = AnimationController(vsync: this, duration: _duration);
-    _icon = _step(0.0, 0.4, Curves.easeOutBack);
-    _name = _step(0.55, 0.85, Curves.easeOut);
+    _icon = _step(0.0, 0.35, Curves.easeOutBack);
 
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
@@ -96,62 +94,42 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: _navy,
+      backgroundColor: Colors.black,
       body: Center(
         child: AnimatedBuilder(
           animation: _controller,
           builder: (context, _) {
             final pop = _icon.value;
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: _iconSize,
-                  height: _iconSize,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Positioned.fill(
-                        child: CustomPaint(
-                          painter: _RipplePainter(
-                            progress: _controller.value,
-                            centre: _ringCentre,
-                            color: _coral,
-                          ),
+            return SizedBox(
+              width: _iconSize,
+              height: _iconSize,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned.fill(
+                    child: Opacity(
+                      opacity: pop.clamp(0.0, 1.0),
+                      child: Transform.scale(
+                        scale: 0.8 + 0.2 * pop,
+                        child: Image.asset(
+                          'assets/icon/tapin_splash.png',
+                          filterQuality: FilterQuality.medium,
                         ),
-                      ),
-                      Positioned.fill(
-                        child: Opacity(
-                          opacity: pop.clamp(0.0, 1.0),
-                          child: Transform.scale(
-                            scale: 0.8 + 0.2 * pop,
-                            child: Image.asset(
-                              'assets/icon/tapin_launcher_1024.png',
-                              filterQuality: FilterQuality.medium,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Transform.translate(
-                  offset: Offset(0, -48 + 8 * (1 - _name.value)),
-                  child: Opacity(
-                    opacity: _name.value,
-                    child: Text(
-                      'tapIn',
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.5,
-                        color: Colors.white,
                       ),
                     ),
                   ),
-                ),
-              ],
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _TapPainter(
+                        progress: _controller.value,
+                        centre: _ringCentre,
+                        color: _coral,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             );
           },
         ),
@@ -160,38 +138,74 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
-/// Two coral rings spreading out from the ring in the icon, as if tapped: the
-/// first as the icon lands, the second a beat later.
-class _RipplePainter extends CustomPainter {
+/// The "tap": a fan of coral rays bursting out of the top of the ring, then a
+/// thin ripple spreading from it.
+///
+/// Every ray starts on the same circle around the ring, so their bases form an
+/// arc, and each points straight out from the centre. The rays in the middle
+/// of the fan go first.
+class _TapPainter extends CustomPainter {
   final double progress;
   final Offset centre;
   final Color color;
 
-  const _RipplePainter({
+  const _TapPainter({
     required this.progress,
     required this.centre,
     required this.color,
   });
 
+  static const _rayCount = 7;
+  static const _fanStartDeg = -155.0; // screen angles: -90 is straight up
+  static const _fanEndDeg = -25.0;
+
   @override
   void paint(Canvas canvas, Size size) {
     final origin = Offset(size.width * centre.dx, size.height * centre.dy);
-    for (final (start, end) in const [(0.3, 0.75), (0.45, 0.9)]) {
-      final t = ((progress - start) / (end - start)).clamp(0.0, 1.0);
-      if (t <= 0 || t >= 1) continue;
-      final eased = Curves.easeOutCubic.transform(t);
-      final radius = size.width * (0.12 + 0.36 * eased);
-      canvas.drawCircle(
-        origin,
-        radius,
+    _paintRays(canvas, size, origin);
+    _paintRipple(canvas, size, origin);
+  }
+
+  void _paintRays(Canvas canvas, Size size, Offset origin) {
+    final baseRadius = size.width * 0.135;
+    final maxLength = size.width * 0.1;
+    // Fully out by the middle of the animation, gone by its end.
+    final fade = 1 - ((progress - 0.78) / 0.2).clamp(0.0, 1.0);
+    for (var i = 0; i < _rayCount; i++) {
+      final fromMiddle = (i - (_rayCount - 1) / 2).abs();
+      final t = ((progress - 0.3 - fromMiddle * 0.025) / 0.28).clamp(0.0, 1.0);
+      if (t <= 0 || fade <= 0) continue;
+      final grow = Curves.easeOutCubic.transform(t);
+      final angle =
+          (_fanStartDeg + (_fanEndDeg - _fanStartDeg) * i / (_rayCount - 1)) *
+          math.pi /
+          180;
+      final direction = Offset(math.cos(angle), math.sin(angle));
+      canvas.drawLine(
+        origin + direction * baseRadius,
+        origin + direction * (baseRadius + maxLength * grow),
         Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 3
-          ..color = color.withValues(alpha: 0.55 * (1 - t)),
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = size.width * 0.03
+          ..color = color.withValues(alpha: fade),
       );
     }
   }
 
+  void _paintRipple(Canvas canvas, Size size, Offset origin) {
+    final t = ((progress - 0.42) / 0.5).clamp(0.0, 1.0);
+    if (t <= 0 || t >= 1) return;
+    canvas.drawCircle(
+      origin,
+      size.width * (0.12 + 0.34 * Curves.easeOutCubic.transform(t)),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5
+        ..color = color.withValues(alpha: 0.4 * (1 - t)),
+    );
+  }
+
   @override
-  bool shouldRepaint(_RipplePainter old) => old.progress != progress;
+  bool shouldRepaint(_TapPainter old) => old.progress != progress;
 }

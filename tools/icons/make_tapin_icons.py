@@ -5,7 +5,7 @@ rounded corners baked in. This cuts the hand, coral ring and sparks out of it
 with a soft mask, redraws the concentric circles, and lays them out the way
 Android builds an adaptive icon:
 
-  background layer  navy with the concentric circles
+  background layer  black with the concentric circles
   foreground layer  the hand, ring and sparks, with a soft shadow
   themed layer      the hand, ring and sparks as one flat shape
 
@@ -26,7 +26,12 @@ RES = os.path.join(ROOT, "android", "app", "src", "main", "res")
 ASSETS = os.path.join(ROOT, "assets", "icon")
 SOURCE = os.path.join(ROOT, "tools", "icons", "source", "tapin_hand_ripples.png")
 
-NAVY = "#0D1946"  # the picture's flat background, sampled
+BLACK = "#000000"  # the icon, like the splash, sits on black
+# The concentric circles: smaller than in the original picture so that no
+# launcher mask (circle, squircle) or the splash circle can slice into them,
+# and bright enough to show on black.
+RIPPLE_SCALE = 0.78
+RIPPLE_ALPHAS = (0.10, 0.14, 0.19)
 # The hand, ring and sparks in the 1264px picture: x, y, width, height.
 CROP = (400, 340, 490, 730)
 # Their middle in the picture, which lands on the middle of the canvas.
@@ -60,41 +65,82 @@ def drop_shadow(src, out, blur, dy, opacity):
         "-evaluate", "multiply", str(opacity), "+channel", out)
 
 
+# The coral sparks sit up and to the right of the ring, well clear of it. In
+# crop pixels: further than 150px from the ring's centre, in the upper right.
+RING_CENTRE_IN_CROP = (RIPPLE_CENTRE[0] - CROP[0], RIPPLE_CENTRE[1] - CROP[1])
+SPARKS_ERASE = (
+    f"(hypot(i-{RING_CENTRE_IN_CROP[0]},j-{RING_CENTRE_IN_CROP[1]})>150"
+    f" && j<{RING_CENTRE_IN_CROP[1] - 22} && i>{RING_CENTRE_IN_CROP[0] + 58})?0:u"
+)
+
+
+def cut_art(tmp, name, erase_sparks=False):
+    """-> (art, art_with_shadow): the hand, ring (and sparks) cut out of the
+    picture and placed on a transparent 1024 canvas."""
+    x, y, w, h = CROP
+    sw, sh = round(w * FACTOR), round(h * FACTOR)
+    crop = f"{w}x{h}+{x}+{y}"
+    rgb = os.path.join(tmp, f"{name}_rgb.png")
+    run("magick", SOURCE, "-crop", crop, "+repage", "-resize", f"{sw}x{sh}!", rgb)
+    # Brightness separates the hand, ring and sparks from the dark navy and the
+    # faint ripples; the soft ramp keeps their edges smooth.
+    mask = os.path.join(tmp, f"{name}_mask.png")
+    cmd = ["magick", SOURCE, "-crop", crop, "+repage", "-colorspace", "Gray",
+           "-level", "30%,48%"]
+    if erase_sparks:
+        cmd += ["-fx", SPARKS_ERASE]
+    run(*cmd, "-resize", f"{sw}x{sh}!", mask)
+    cut = os.path.join(tmp, f"{name}_cut.png")
+    run("magick", rgb, mask, "-alpha", "off", "-compose", "CopyOpacity", "-composite", cut)
+
+    left, top = to_canvas(x, y)
+    art = os.path.join(tmp, f"{name}_art.png")
+    run("magick", "-size", "1024x1024", "xc:none", cut, "-geometry",
+        f"+{round(left)}+{round(top)}", "-composite", art)
+    shadow = os.path.join(tmp, f"{name}_shadow.png")
+    drop_shadow(art, shadow, 12, 12, 0.42)
+    both = os.path.join(tmp, f"{name}_both.png")
+    # Start from a colour canvas: composited onto the grey shadow image first,
+    # ImageMagick would turn the whole layer grey.
+    run("magick", "-size", "1024x1024", "xc:none", shadow, "-composite", art,
+        "-composite", "-type", "TrueColorAlpha", both)
+    return art, both
+
+
+def build_splash(tmp):
+    """-> the splash art: a transparent 1024 canvas with the concentric circles,
+    the hand and the ring, no sparks (the splash animates those as rays).
+
+    The circles are smaller than the launcher icon's, so all of them fit inside
+    the circle Android 12 cuts its splash icon to (otherwise the top of the
+    outer circle is sliced off), and brighter, so they show on black."""
+    _, art_shadow = cut_art(tmp, "splash", erase_sparks=True)
+    cx, cy = to_canvas(*RIPPLE_CENTRE)
+    cmd = ["magick", "-size", "1024x1024", "xc:none"]
+    for r, alpha in zip(RIPPLE_RADII, RIPPLE_ALPHAS):
+        r = r * FACTOR * RIPPLE_SCALE
+        cmd += ["-fill", f"rgba(130,140,255,{alpha})", "-draw",
+                f"circle {cx:.1f},{cy:.1f} {cx + r:.1f},{cy:.1f}"]
+    ripples = os.path.join(tmp, "splash_ripples.png")
+    run(*cmd, ripples)
+    out = os.path.join(tmp, "splash.png")
+    run("magick", "-size", "1024x1024", "xc:none", ripples, "-composite",
+        art_shadow, "-composite", "-type", "TrueColorAlpha", out)
+    return out
+
+
 def build_layers(tmp):
     """-> (background, foreground, art) PNG paths, all 1024px.
 
     [art] is the hand, ring and sparks alone, for the flat themed shape."""
-    x, y, w, h = CROP
-    sw, sh = round(w * FACTOR), round(h * FACTOR)
-    crop = f"{w}x{h}+{x}+{y}"
-    rgb = os.path.join(tmp, "art_rgb.png")
-    run("magick", SOURCE, "-crop", crop, "+repage", "-resize", f"{sw}x{sh}!", rgb)
-    # Brightness separates the hand, ring and sparks from the dark navy and the
-    # faint ripples; the soft ramp keeps their edges smooth.
-    mask = os.path.join(tmp, "mask.png")
-    run("magick", SOURCE, "-crop", crop, "+repage", "-colorspace", "Gray",
-        "-level", "30%,48%", "-resize", f"{sw}x{sh}!", mask)
-    cut = os.path.join(tmp, "cut.png")
-    run("magick", rgb, mask, "-alpha", "off", "-compose", "CopyOpacity", "-composite", cut)
-
-    left, top = to_canvas(x, y)
-    art = os.path.join(tmp, "art.png")
-    run("magick", "-size", "1024x1024", "xc:none", cut, "-geometry",
-        f"+{round(left)}+{round(top)}", "-composite", art)
-    shadow = os.path.join(tmp, "shadow.png")
-    drop_shadow(art, shadow, 12, 12, 0.42)
-    fg = os.path.join(tmp, "fg.png")
-    # Start from a colour canvas: composited onto the grey shadow image first,
-    # ImageMagick would turn the whole layer grey.
-    run("magick", "-size", "1024x1024", "xc:none", shadow, "-composite", art,
-        "-composite", "-type", "TrueColorAlpha", fg)
+    art, fg = cut_art(tmp, "icon")
 
     # Concentric circles: soft discs around the ring, brightest in the middle.
     cx, cy = to_canvas(*RIPPLE_CENTRE)
-    bg_cmd = ["magick", "-size", "1024x1024", f"xc:{NAVY}"]
-    for r in RIPPLE_RADII:
-        r = r * FACTOR
-        bg_cmd += ["-fill", "rgba(124,134,255,0.055)", "-draw",
+    bg_cmd = ["magick", "-size", "1024x1024", f"xc:{BLACK}"]
+    for r, alpha in zip(RIPPLE_RADII, RIPPLE_ALPHAS):
+        r = r * FACTOR * RIPPLE_SCALE
+        bg_cmd += ["-fill", f"rgba(130,140,255,{alpha})", "-draw",
                    f"circle {cx:.1f},{cy:.1f} {cx + r:.1f},{cy:.1f}"]
     bg = os.path.join(tmp, "bg.png")
     run(*bg_cmd, bg)
@@ -133,7 +179,10 @@ def main():
         mono = os.path.join(tmp, "mono.png")
         flat_shape(art, mono)
 
+        splash = build_splash(tmp)
+
         resized(icon, os.path.join(ASSETS, "tapin_launcher_1024.png"), 1024)
+        resized(splash, os.path.join(ASSETS, "tapin_splash.png"), 1024)
         # The in-app logo: the flat shape, trimmed, tinted by the theme at runtime.
         run("magick", mono, "-trim", "+repage", "-bordercolor", "none", "-border", "8",
             "-resize", "256x256", os.path.join(ASSETS, "tapin_glyph.png"))
@@ -145,7 +194,7 @@ def main():
             rounded(icon, f"{RES}/mipmap-{d}/ic_launcher.png", round(48 * scale))
             # Android 12+ splash icon: a 288dp canvas whose middle 192dp circle
             # is what shows, exactly the area this composition is designed for.
-            resized(icon, f"{RES}/drawable-{d}/splash_tapin.png", round(288 * scale))
+            resized(splash, f"{RES}/drawable-{d}/splash_tapin.png", round(288 * scale))
     print("done")
 
 

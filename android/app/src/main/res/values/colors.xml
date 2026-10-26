@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#0D1946</color>
-    <!-- The launch screen is the icon's own navy in light and dark mode, so the
-         system splash blends into the Flutter splash
+    <color name="ic_launcher_background">#000000</color>
+    <!-- The launch screen is black in light and dark mode, so the system splash
+         blends into the Flutter splash
          (see lib/core/presentation/splash_screen.dart). -->
-    <color name="splash_background">#0D1946</color>
+    <color name="splash_background">#000000</color>
 </resources>
