@@ -300,7 +300,7 @@ void main() {
     },
   );
 
-  testWidgets('tapping a workout opens it; the top card has no volume', (
+  testWidgets('tapping a workout shows what is in it without starting it', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(360 * 3, 900 * 3);
@@ -311,13 +311,26 @@ void main() {
 
     await tester.pumpWidget(app(home: const Scaffold(body: GymPage())));
     await tester.pumpAndSettle();
-    expect(find.text('Volume'), findsNothing);
+    expect(find.text('Volume'), findsNothing); // no volume on the top card
     expect(find.byTooltip('Reorder workouts'), findsOneWidget);
 
     // Tap the card itself (its name), not the Start button.
     await tester.tap(find.text('Push Day').first);
     await tester.pumpAndSettle();
-    expect(cubit.state.active, isNotNull);
+
+    // The contents are listed: exercises, set counts, weights and settings.
+    expect(cubit.state.active, isNull, reason: 'looking must not start it');
+    expect(find.text('Bench Press'), findsOneWidget);
+    expect(find.text('Pec Deck'), findsOneWidget);
+    expect(find.text('3 × 60 kg'), findsOneWidget);
+    expect(find.text('2 × 18 plates'), findsOneWidget);
+    expect(find.textContaining('Setting Seat 3'), findsOneWidget);
+    expect(find.text('Start workout'), findsOneWidget);
+    expect(find.textContaining('Started'), findsNothing);
+
+    // Start is the explicit step.
+    await tester.tap(find.text('Start workout'));
+    await tester.pumpAndSettle();
     expect(cubit.state.active!.name, 'Push Day');
     expect(find.textContaining('Started'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());

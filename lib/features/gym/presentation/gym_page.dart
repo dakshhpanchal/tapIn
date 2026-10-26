@@ -10,6 +10,7 @@ import 'package:opennutritracker/features/gym/presentation/gym_format.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_transfer_ui.dart';
 import 'package:opennutritracker/features/gym/presentation/reorder_sheet.dart';
 import 'package:opennutritracker/features/gym/presentation/session_detail_screen.dart';
+import 'package:opennutritracker/features/gym/presentation/workout_detail_screen.dart';
 import 'package:opennutritracker/features/gym/presentation/workout_editor_screen.dart';
 
 /// The Gym tab: your planned workouts (start one, then log reps as you go),
@@ -221,12 +222,12 @@ class _WorkoutTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: Dimens.spacing8),
       child: AppCard(
-        // Tapping the workout opens it: starts it, or goes back to the one
-        // already in progress.
-        onTap: () async {
-          if (canStart) await cubit.startFromRoutine(routine);
-          if (context.mounted) _openActive(context);
-        },
+        // Tapping a workout only shows what is in it; Start begins it.
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => WorkoutDetailScreen(routineId: routine.id),
+          ),
+        ),
         padding: const EdgeInsets.fromLTRB(
           Dimens.spacing16,
           Dimens.spacing12,
