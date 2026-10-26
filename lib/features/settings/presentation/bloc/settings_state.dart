@@ -24,6 +24,7 @@ class SettingsLoadedState extends SettingsState {
   final BodyWeightUnit bodyWeightUnit;
   final bool showActivityTracking;
   final bool showMealMacros;
+  final bool trackWater;
   final bool notificationsEnabled;
   final int notificationHour;
   final int notificationMinute;
@@ -61,6 +62,7 @@ class SettingsLoadedState extends SettingsState {
     this.bodyWeightUnit = BodyWeightUnit.kg,
     this.showActivityTracking = true,
     this.showMealMacros = true,
+    this.trackWater = true,
     this.notificationsEnabled = false,
     this.notificationHour = 8,
     this.notificationMinute = 0,
@@ -81,30 +83,31 @@ class SettingsLoadedState extends SettingsState {
 
   @override
   List<Object?> get props => [
-        versionNumber,
-        sendAnonymousData,
-        appTheme,
-        usesImperialUnits,
-        usesImperialFoodUnits,
-        usesImperialHeightUnits,
-        bodyWeightUnit,
-        showActivityTracking,
-        showMealMacros,
-        notificationsEnabled,
-        notificationHour,
-        notificationMinute,
-        selectedLocale,
-        offCacheCount,
-        offCacheSizeBytes,
-        showMicronutrients,
-        usesKilojoules,
-        dayStartOffsetHours,
-        dayStartOffsetMinutes,
-        useMaterialYou,
-        accentColor,
-        isDemoData,
-        healthImportEnabled,
-        healthWorkoutKcalMultiplier,
-        defaultToRawFoodUnits,
-      ];
+    versionNumber,
+    sendAnonymousData,
+    appTheme,
+    usesImperialUnits,
+    usesImperialFoodUnits,
+    usesImperialHeightUnits,
+    bodyWeightUnit,
+    showActivityTracking,
+    showMealMacros,
+    trackWater,
+    notificationsEnabled,
+    notificationHour,
+    notificationMinute,
+    selectedLocale,
+    offCacheCount,
+    offCacheSizeBytes,
+    showMicronutrients,
+    usesKilojoules,
+    dayStartOffsetHours,
+    dayStartOffsetMinutes,
+    useMaterialYou,
+    accentColor,
+    isDemoData,
+    healthImportEnabled,
+    healthWorkoutKcalMultiplier,
+    defaultToRawFoodUnits,
+  ];
 }

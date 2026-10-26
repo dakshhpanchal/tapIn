@@ -212,6 +212,10 @@ class ConfigDBO extends HiveObject {
   // about the device.
   @HiveField(41)
   bool? localeSyncSeeded;
+  // tapIn: whether water intake is tracked at all. Null means on, so
+  // existing configs keep the water tile until the user turns it off.
+  @HiveField(42)
+  bool? trackWater;
 
   ConfigDBO(
     this.hasAcceptedDisclaimer,
@@ -253,6 +257,7 @@ class ConfigDBO extends HiveObject {
     this.defaultToRawFoodUnits,
     this.trackedDaysOffsetMinutes,
     this.localeSyncSeeded,
+    this.trackWater,
   });
 
   factory ConfigDBO.empty() =>

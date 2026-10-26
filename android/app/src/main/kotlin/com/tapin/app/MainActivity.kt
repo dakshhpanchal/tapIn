@@ -1,4 +1,4 @@
-package com.opennutritracker.ont.opennutritracker
+package com.tapin.app
 
 import android.app.LocaleManager
 import android.content.Intent

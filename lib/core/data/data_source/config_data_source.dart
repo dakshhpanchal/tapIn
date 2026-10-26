@@ -216,6 +216,10 @@ class ConfigDataSource {
     await _update((c) => c.showActivityTracking = show);
   }
 
+  Future<void> setConfigTrackWater(bool track) async {
+    await _update((c) => c.trackWater = track);
+  }
+
   Future<void> setConfigShowMealMacros(bool show) async {
     await _update((c) => c.showMealMacros = show);
   }

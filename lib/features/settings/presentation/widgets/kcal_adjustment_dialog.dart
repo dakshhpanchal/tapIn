@@ -37,7 +37,6 @@ class KcalAdjustmentDialog extends StatefulWidget {
 class _KcalAdjustmentDialogState extends State<KcalAdjustmentDialog> {
   static const double _minKcalAdjustment = -1000;
   static const double _maxKcalAdjustment = 1000;
-  static const int _kcalDivisions = 200;
 
   double _kcalAdjustment = 0;
   UserEntity? _user;
@@ -79,8 +78,10 @@ class _KcalAdjustmentDialogState extends State<KcalAdjustmentDialog> {
     final kcal = await widget.settingsBloc.getKcalAdjustment();
     final user = await widget.profileBloc.getUser();
     if (!mounted) return;
-    final usesKj =
-        Provider.of<EnergyUnitProvider>(context, listen: false).usesKilojoules;
+    final usesKj = Provider.of<EnergyUnitProvider>(
+      context,
+      listen: false,
+    ).usesKilojoules;
     final display = usesKj ? UnitCalc.kcalToKj(kcal) : kcal;
     setState(() {
       _kcalAdjustment = kcal;
@@ -96,22 +97,67 @@ class _KcalAdjustmentDialogState extends State<KcalAdjustmentDialog> {
     // The text field always reads in whichever unit the user is
     // seeing; convert back to kcal once for storage so the persisted
     // value stays consistent across unit toggles.
-    final usesKj =
-        Provider.of<EnergyUnitProvider>(context, listen: false).usesKilojoules;
+    final usesKj = Provider.of<EnergyUnitProvider>(
+      context,
+      listen: false,
+    ).usesKilojoules;
     final parsed = int.tryParse(_kcalController.text);
     if (parsed == null) {
       // Bad input — snap the field back to the last good value.
-      final display =
-          usesKj ? UnitCalc.kcalToKj(_kcalAdjustment) : _kcalAdjustment;
+      final display = usesKj
+          ? UnitCalc.kcalToKj(_kcalAdjustment)
+          : _kcalAdjustment;
       _kcalController.text = display.round().toString();
       return;
     }
-    final asKcal =
-        usesKj ? UnitCalc.kjToKcal(parsed.toDouble()) : parsed.toDouble();
+    final asKcal = usesKj
+        ? UnitCalc.kjToKcal(parsed.toDouble())
+        : parsed.toDouble();
     final clamped = asKcal.clamp(_minKcalAdjustment, _maxKcalAdjustment);
     final clampedDisplay = usesKj ? UnitCalc.kcalToKj(clamped) : clamped;
     setState(() => _kcalAdjustment = clamped);
     _kcalController.text = clampedDisplay.round().toString();
+  }
+
+  /// Applies whatever is typed as soon as it parses, so the slider and the
+  /// saved value follow every keystroke instead of waiting for the field to
+  /// lose focus. A lone '-' (mid-typing a negative number) is ignored.
+  void _applyLive(String text) {
+    _kcalTextEdited = true;
+    final parsed = int.tryParse(text);
+    if (parsed == null) return;
+    final usesKj = Provider.of<EnergyUnitProvider>(
+      context,
+      listen: false,
+    ).usesKilojoules;
+    final asKcal = usesKj
+        ? UnitCalc.kjToKcal(parsed.toDouble())
+        : parsed.toDouble();
+    setState(
+      () => _kcalAdjustment = asKcal.clamp(
+        _minKcalAdjustment,
+        _maxKcalAdjustment,
+      ),
+    );
+  }
+
+  /// Moves the adjustment by [delta] in the unit on screen (kcal or kJ).
+  void _nudge(int delta, {bool negate = false}) {
+    final usesKj = Provider.of<EnergyUnitProvider>(
+      context,
+      listen: false,
+    ).usesKilojoules;
+    final shown =
+        (usesKj ? UnitCalc.kcalToKj(_kcalAdjustment) : _kcalAdjustment).round();
+    final next = negate ? -shown : shown + delta;
+    final asKcal = usesKj
+        ? UnitCalc.kjToKcal(next.toDouble())
+        : next.toDouble();
+    final clamped = asKcal.clamp(_minKcalAdjustment, _maxKcalAdjustment);
+    setState(() => _kcalAdjustment = clamped);
+    final clampedShown = usesKj ? UnitCalc.kcalToKj(clamped) : clamped;
+    _kcalController.text = clampedShown.round().toString();
+    _kcalTextEdited = false;
   }
 
   Future<void> _openCaloriesProfileDialog() async {
@@ -120,8 +166,7 @@ class _KcalAdjustmentDialogState extends State<KcalAdjustmentDialog> {
     final selected = await showDialog<CaloriesProfileEntity>(
       context: context,
       builder: (ctx) => CaloriesProfileInfoDialog(
-        initialProfile:
-            user.caloriesProfile ?? CaloriesProfileEntity.averaged,
+        initialProfile: user.caloriesProfile ?? CaloriesProfileEntity.averaged,
       ),
     );
     if (selected == null) return;
@@ -234,92 +279,122 @@ class _KcalAdjustmentDialogState extends State<KcalAdjustmentDialog> {
                     ),
                   ],
                   const SizedBox(height: 24),
-                  Builder(builder: (context) {
-                    final usesKj =
-                        context.watch<EnergyUnitProvider>().usesKilojoules;
-                    final unitLabel =
-                        usesKj ? s.kjLabel : s.kcalLabel;
-                    final headingLabel = usesKj
-                        ? s.dailyKjAdjustmentLabel
-                        : s.dailyKcalAdjustmentLabel;
-                    final display = usesKj
-                        ? UnitCalc.kcalToKj(_kcalAdjustment)
-                        : _kcalAdjustment;
-                    final displayMin = usesKj
-                        ? UnitCalc.kcalToKj(_minKcalAdjustment)
-                        : _minKcalAdjustment;
-                    final displayMax = usesKj
-                        ? UnitCalc.kcalToKj(_maxKcalAdjustment)
-                        : _maxKcalAdjustment;
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                headingLabel,
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                            ),
-                            SizedBox(
-                              // Scale with the user's text setting so the value
-                              // and unit suffix stay readable at large fonts.
-                              width:
-                                  MediaQuery.textScalerOf(context).scale(128),
-                              child: Semantics(
-                                identifier: 'kcal-adjustment-input',
-                                child: TextField(
-                                  controller: _kcalController,
-                                  focusNode: _kcalFocusNode,
-                                  keyboardType:
-                                      const TextInputType.numberWithOptions(
-                                    signed: true,
-                                    decimal: false,
-                                  ),
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.allow(
-                                      RegExp(r'^-?\d*'),
-                                    ),
-                                  ],
-                                  textAlign: TextAlign.right,
-                                  decoration: InputDecoration(
-                                    suffixText: unitLabel,
-                                    isDense: true,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 12,
-                                    ),
-                                  ),
-                                  onChanged: (_) => _kcalTextEdited = true,
-                                  onSubmitted: (_) => _applyKcalInput(),
-                                  onEditingComplete: _applyKcalInput,
+                  Builder(
+                    builder: (context) {
+                      final usesKj = context
+                          .watch<EnergyUnitProvider>()
+                          .usesKilojoules;
+                      final unitLabel = usesKj ? s.kjLabel : s.kcalLabel;
+                      final headingLabel = usesKj
+                          ? s.dailyKjAdjustmentLabel
+                          : s.dailyKcalAdjustmentLabel;
+                      final display = usesKj
+                          ? UnitCalc.kcalToKj(_kcalAdjustment)
+                          : _kcalAdjustment;
+                      final displayMin = usesKj
+                          ? UnitCalc.kcalToKj(_minKcalAdjustment)
+                          : _minKcalAdjustment;
+                      final displayMax = usesKj
+                          ? UnitCalc.kcalToKj(_maxKcalAdjustment)
+                          : _maxKcalAdjustment;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  headingLabel,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        Semantics(
-                          identifier: 'kcal-adjustment-slider',
-                          child: Slider(
-                            min: displayMin,
-                            max: displayMax,
-                            divisions: _kcalDivisions,
-                            value: display.clamp(displayMin, displayMax),
-                            label: '${display.round()} $unitLabel',
-                            onChanged: (value) {
-                              final asKcal = usesKj
-                                  ? UnitCalc.kjToKcal(value)
-                                  : value;
-                              setState(() => _kcalAdjustment = asKcal);
-                              _kcalController.text = value.round().toString();
-                              _kcalTextEdited = false;
-                            },
+                              SizedBox(
+                                // Scale with the user's text setting so the value
+                                // and unit suffix stay readable at large fonts.
+                                width: MediaQuery.textScalerOf(
+                                  context,
+                                ).scale(128),
+                                child: Semantics(
+                                  identifier: 'kcal-adjustment-input',
+                                  child: TextField(
+                                    controller: _kcalController,
+                                    focusNode: _kcalFocusNode,
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                          signed: true,
+                                          decimal: false,
+                                        ),
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.allow(
+                                        RegExp(r'^-?\d*'),
+                                      ),
+                                    ],
+                                    textAlign: TextAlign.right,
+                                    decoration: InputDecoration(
+                                      suffixText: unitLabel,
+                                      isDense: true,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 12,
+                                          ),
+                                    ),
+                                    onChanged: _applyLive,
+                                    onSubmitted: (_) => _applyKcalInput(),
+                                    onEditingComplete: _applyKcalInput,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    );
-                  }),
+                          Semantics(
+                            identifier: 'kcal-adjustment-slider',
+                            child: Slider(
+                              min: displayMin,
+                              max: displayMax,
+                              value: display.clamp(displayMin, displayMax),
+                              label: '${display.round()} $unitLabel',
+                              onChanged: (value) {
+                                // Whole kcal/kJ steps, not 10s: the slider is
+                                // continuous and rounded here.
+                                final shown = value.roundToDouble();
+                                final asKcal = usesKj
+                                    ? UnitCalc.kjToKcal(shown)
+                                    : shown;
+                                setState(() => _kcalAdjustment = asKcal);
+                                _kcalController.text = shown.round().toString();
+                                _kcalTextEdited = false;
+                              },
+                            ),
+                          ),
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 8,
+                            runSpacing: 4,
+                            children: [
+                              for (final d in const [-100, -10, -1, 1, 10, 100])
+                                ActionChip(
+                                  label: Text(d > 0 ? '+$d' : '$d'),
+                                  visualDensity: VisualDensity.compact,
+                                  onPressed: () => _nudge(d),
+                                ),
+                              ActionChip(
+                                avatar: const Icon(
+                                  Icons.swap_vert_rounded,
+                                  size: 16,
+                                ),
+                                label: const Text('+/−'),
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () => _nudge(0, negate: true),
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ],
               ),
             ),

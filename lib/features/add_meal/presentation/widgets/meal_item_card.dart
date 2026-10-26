@@ -1,6 +1,8 @@
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:opennutritracker/features/edit_meal/presentation/edit_meal_screen.dart';
+import 'package:opennutritracker/features/recipes/presentation/screens/recipe_detail_screen.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:opennutritracker/core/presentation/widgets/app_card.dart';
 import 'package:opennutritracker/core/presentation/widgets/meal_value_unit_text.dart';
@@ -88,6 +90,15 @@ class MealItemCard extends StatelessWidget {
             // A builder row leaves the identifier out and its list carries
             // one (AGENTS.md, "Dynamic lists"); the add-item sheet's fixed
             // recent rows pass their own.
+            if (_isOwnFood)
+              Semantics(
+                identifier: 'meal-item-edit',
+                child: IconButton(
+                  tooltip: S.of(context).editItemDialogTitle,
+                  icon: Icon(Icons.edit_outlined, color: palette.textMuted),
+                  onPressed: () => _onEditPressed(context),
+                ),
+              ),
             FavouriteToggleButton(
               meal: mealEntity,
               semanticsIdentifier: favouriteSemanticsIdentifier,
@@ -230,6 +241,34 @@ class MealItemCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Recipes and custom foods are the user's own, so they can be edited
+  /// straight from the results instead of via Settings or a profile page.
+  bool get _isOwnFood =>
+      mealEntity.source == MealSourceEntity.recipe ||
+      mealEntity.source == MealSourceEntity.custom;
+
+  void _onEditPressed(BuildContext context) {
+    if (mealEntity.source == MealSourceEntity.recipe) {
+      final id = mealEntity.code;
+      if (id == null) return;
+      Navigator.of(context).pushNamed(
+        NavigationOptions.recipeDetailRoute,
+        arguments: RecipeDetailArguments(recipeId: id),
+      );
+    } else {
+      Navigator.of(context).pushNamed(
+        NavigationOptions.editMealRoute,
+        arguments: EditMealScreenArguments(
+          day,
+          mealEntity,
+          addMealType.getIntakeType(),
+          usesImperialUnits,
+          editOnly: true,
+        ),
+      );
+    }
   }
 
   void _onItemPressed(BuildContext context) {

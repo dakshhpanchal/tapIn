@@ -66,6 +66,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
           bodyWeightUnit: userConfig.bodyWeightUnit,
           showActivityTracking: userConfig.showActivityTracking,
           showMealMacros: userConfig.showMealMacros,
+          trackWater: userConfig.trackWater,
           notificationsEnabled: userConfig.notificationsEnabled,
           notificationHour: userConfig.notificationHour,
           notificationMinute: userConfig.notificationMinute,
@@ -133,6 +134,10 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     return _addConfigUsecase.setConfigHealthWorkoutKcalMultiplier(multiplier);
   }
 
+  Future<void> setTrackWater(bool trackWater) {
+    return _addConfigUsecase.setConfigTrackWater(trackWater);
+  }
+
   Future<void> setShowMealMacros(bool showMealMacros) {
     return _addConfigUsecase.setConfigShowMealMacros(showMealMacros);
   }
@@ -186,6 +191,9 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     final config = await _getConfigUsecase.getConfig();
     return config.dayStartOffsetMinutes;
   }
+
+  /// Today's total kcal goal, so dialogs can show macro shares in grams.
+  Future<double> getCurrentKcalGoal() => _getKcalGoalUsecase.getKcalGoal();
 
   Future<double> getKcalAdjustment() async {
     final config = await _getConfigUsecase.getConfig();

@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:meta/meta.dart';
 import 'package:opennutritracker/core/data/dbo/config_dbo.dart';
 import 'package:opennutritracker/core/domain/entity/app_theme_entity.dart';
 import 'package:opennutritracker/core/domain/entity/body_weight_unit_entity.dart';
@@ -42,6 +43,7 @@ class ConfigEntity extends Equatable {
   final double? userFatGoalPct;
   final bool showActivityTracking;
   final bool showMealMacros;
+  final bool trackWater;
   final bool notificationsEnabled;
   final int notificationHour;
   final int notificationMinute;
@@ -245,6 +247,7 @@ class ConfigEntity extends Equatable {
     this.userFatGoalPct,
     this.showActivityTracking = true,
     this.showMealMacros = true,
+    this.trackWater = true,
     this.notificationsEnabled = false,
     this.notificationHour = 8,
     this.notificationMinute = 0,
@@ -336,6 +339,12 @@ class ConfigEntity extends Equatable {
   int get dayStartOffsetTotalMinutes =>
       dayStartOffsetHours * 60 + dayStartOffsetMinutes;
 
+  /// tapIn drops ONT's activity tracking until the gym tracker lands, so the
+  /// stored setting is ignored while this is true. The activity code and any
+  /// logged activities stay in place; tests of that code switch this off.
+  @visibleForTesting
+  static bool hideActivityTracking = true;
+
   factory ConfigEntity.fromConfigDBO(ConfigDBO dbo) => ConfigEntity(
     dbo.hasAcceptedDisclaimer,
     dbo.hasAcceptedPolicy,
@@ -355,8 +364,10 @@ class ConfigEntity extends Equatable {
     userCarbGoalPct: dbo.userCarbGoalPct,
     userProteinGoalPct: dbo.userProteinGoalPct,
     userFatGoalPct: dbo.userFatGoalPct,
-    showActivityTracking: dbo.showActivityTracking ?? true,
+    showActivityTracking:
+        hideActivityTracking ? false : (dbo.showActivityTracking ?? true),
     showMealMacros: dbo.showMealMacros ?? true,
+    trackWater: dbo.trackWater ?? true,
     notificationsEnabled: dbo.notificationsEnabled ?? false,
     notificationHour: dbo.notificationHour ?? 8,
     notificationMinute: dbo.notificationMinute ?? 0,
@@ -472,6 +483,7 @@ class ConfigEntity extends Equatable {
     userFatGoalPct,
     showActivityTracking,
     showMealMacros,
+    trackWater,
     notificationsEnabled,
     notificationHour,
     notificationMinute,

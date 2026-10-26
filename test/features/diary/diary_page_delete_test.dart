@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:opennutritracker/core/domain/entity/config_entity.dart';
 import 'package:get_it/get_it.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:opennutritracker/core/data/data_source/config_data_source.dart';
@@ -127,6 +128,9 @@ TrackedDayDBO _row(DateTime day, {required double goal, double kcal = 0}) =>
     );
 
 void main() {
+  // These cases exercise activity deletion, which tapIn hides by default.
+  setUpAll(() => ConfigEntity.hideActivityTracking = false);
+  tearDownAll(() => ConfigEntity.hideActivityTracking = true);
   final locator = GetIt.instance;
   var boxTag = 0;
 

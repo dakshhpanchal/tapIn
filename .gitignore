@@ -77,3 +77,7 @@ tool/verify_openai_key.dart
 
 # Fastlane / Bundler — local gem install path (bundle config set path vendor/bundle)
 ios/vendor/
+
+# tapIn: personal data exports must never be committed
+opennutritracker-export*.zip
+*-export.zip

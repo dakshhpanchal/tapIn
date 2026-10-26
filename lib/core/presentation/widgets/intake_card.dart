@@ -16,6 +16,22 @@ import 'package:opennutritracker/core/utils/user_image_storage.dart';
 import 'package:opennutritracker/features/diary/presentation/widgets/diary_sort_type.dart';
 import 'package:opennutritracker/generated/l10n.dart';
 
+/// How many servings [intake] was logged as, or null when it wasn't logged in
+/// servings (or its meal has no serving size to divide by). The stored
+/// `amount` is always in grams/ml, so servings are `amount / servingQuantity`.
+double? intakeServingCount(IntakeEntity intake) {
+  if (intake.unit != 'serving') return null;
+  final size = intake.meal.servingQuantity;
+  if (size == null || size <= 0) return null;
+  return intake.amount / size;
+}
+
+/// "1", "1.5", "0.33" — up to two decimals, trailing zeros dropped.
+String formatServingCount(double count) {
+  final fixed = count.toStringAsFixed(2);
+  return fixed.replaceFirst(RegExp(r'\.?0+$'), '');
+}
+
 /// A logged intake, rendered as a full-width row: a rounded thumbnail, the meal
 /// name and amount, and the energy on the trailing edge. Replaces the old
 /// 120x120 tile so a day's meals read as a clean scannable list.
@@ -46,6 +62,7 @@ class IntakeCard extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final radius = BorderRadius.circular(Dimens.radiusM);
     final s = S.of(context);
+    final servingCount = intakeServingCount(intake);
     final macro = switch (sortType) {
       DiarySortType.protein => (intake.totalProteinsGram, s.proteinLabel),
       DiarySortType.carbs => (intake.totalCarbsGram, s.carbsLabel),
@@ -93,12 +110,22 @@ class IntakeCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
-                      MealValueUnitText(
-                        value: intake.amount,
-                        meal: intake.meal,
-                        usesImperialUnits: usesImperialUnits,
-                        textStyle: textTheme.bodySmall?.copyWith(color: palette.textMuted),
-                      ),
+                      if (servingCount != null)
+                        Text(
+                          '${formatServingCount(servingCount)} '
+                          '${s.measureUnitServing(servingCount)}',
+                          style: textTheme.bodySmall
+                              ?.copyWith(color: palette.textMuted),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        )
+                      else
+                        MealValueUnitText(
+                          value: intake.amount,
+                          meal: intake.meal,
+                          usesImperialUnits: usesImperialUnits,
+                          textStyle: textTheme.bodySmall?.copyWith(color: palette.textMuted),
+                        ),
                     ],
                   ),
                 ),

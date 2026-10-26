@@ -13,6 +13,26 @@ import 'package:opennutritracker/features/edit_meal/presentation/edit_meal_scree
 import 'package:opennutritracker/features/settings/presentation/bloc/custom_meals_bloc.dart';
 import 'package:opennutritracker/generated/l10n.dart';
 
+/// Snackbar for a finished custom-meal merge, shared with the My foods page.
+void showCustomMealsMergedSnackbar(
+  BuildContext context,
+  CustomMealsMergedState state,
+) {
+  final s = S.of(context);
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        state.rewrittenIntakeCount == 1
+            ? s.customMealsMergeSuccessSnackbarOne(state.winnerDisplayName)
+            : s.customMealsMergeSuccessSnackbarOther(
+                state.rewrittenIntakeCount,
+                state.winnerDisplayName,
+              ),
+      ),
+    ),
+  );
+}
+
 /// Embeddable list of user-created custom meals (formerly the body of
 /// CustomMealsScreen in Settings). Hosted inside RecipesPage's TabBarView.
 class CustomMealsTab extends StatelessWidget {
@@ -20,7 +40,7 @@ class CustomMealsTab extends StatelessWidget {
 
   const CustomMealsTab({super.key, required this.usesImperialUnits});
 
-  static String _keyFor(MealEntity meal) => meal.code ?? meal.name ?? '';
+  static String keyFor(MealEntity meal) => meal.code ?? meal.name ?? '';
 
   @override
   Widget build(BuildContext context) {
@@ -80,12 +100,12 @@ class CustomMealsTab extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   child: InkWell(
                     borderRadius: Dimens.borderRadiusL,
-                    onTap: () => _openEditMeal(context, meal),
+                    onTap: () => openEditMeal(context, meal, usesImperialUnits),
                     child: Padding(
                       padding: const EdgeInsets.all(Dimens.spacing12),
                       child: Row(
                         children: [
-                          _MealLeadingThumbnail(meal: meal),
+                          MealLeadingThumbnail(meal: meal),
                           const SizedBox(width: Dimens.spacing12),
                           Expanded(
                             child: Column(
@@ -117,7 +137,7 @@ class CustomMealsTab extends StatelessWidget {
                                 tooltip: S.of(context).customMealsRowMoreTooltip,
                                 onSelected: (value) {
                                   if (value == 'merge') {
-                                    _startMerge(context, meal, state.meals);
+                                    startMerge(context, meal, state.meals);
                                   }
                                 },
                                 itemBuilder: (ctx) => [
@@ -132,7 +152,7 @@ class CustomMealsTab extends StatelessWidget {
                             ),
                           IconButton(
                             icon: Icon(Icons.delete_outline_rounded, color: palette.textMuted),
-                            onPressed: () => _confirmDelete(context, meal),
+                            onPressed: () => confirmDelete(context, meal),
                           ),
                         ],
                       ),
@@ -148,7 +168,11 @@ class CustomMealsTab extends StatelessWidget {
     );
   }
 
-  Future<void> _openEditMeal(BuildContext context, MealEntity meal) async {
+  static Future<void> openEditMeal(
+    BuildContext context,
+    MealEntity meal,
+    bool usesImperialUnits,
+  ) async {
     final bloc = context.read<CustomMealsBloc>();
     await Navigator.of(context).pushNamed(
       NavigationOptions.editMealRoute,
@@ -163,7 +187,7 @@ class CustomMealsTab extends StatelessWidget {
     bloc.add(LoadCustomMealsEvent());
   }
 
-  Future<void> _confirmDelete(BuildContext context, MealEntity meal) async {
+  static Future<void> confirmDelete(BuildContext context, MealEntity meal) async {
     final bloc = context.read<CustomMealsBloc>();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -191,14 +215,14 @@ class CustomMealsTab extends StatelessWidget {
   /// the two stays as the survivor. The row the menu was opened from is
   /// pre-selected as the survivor so the default behaviour matches the
   /// gesture (you tapped the "good" entry, then picked the duplicate).
-  Future<void> _startMerge(
+  static Future<void> startMerge(
     BuildContext context,
     MealEntity tappedFrom,
     List<MealEntity> allMeals,
   ) async {
     final bloc = context.read<CustomMealsBloc>();
     final candidates = allMeals
-        .where((m) => _keyFor(m) != _keyFor(tappedFrom))
+        .where((m) => keyFor(m) != keyFor(tappedFrom))
         .toList();
     if (candidates.isEmpty) return;
 
@@ -226,7 +250,7 @@ class CustomMealsTab extends StatelessWidget {
                     itemBuilder: (ctx2, i) {
                       final m = candidates[i];
                       return ListTile(
-                        leading: _MealLeadingThumbnail(meal: m),
+                        leading: MealLeadingThumbnail(meal: m),
                         title: Text(
                           m.name ?? '',
                           style: Theme.of(ctx2).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
@@ -247,20 +271,20 @@ class CustomMealsTab extends StatelessWidget {
 
     final winner = await _chooseSurvivor(context, tappedFrom, partner);
     if (winner == null || !context.mounted) return;
-    final loser = _keyFor(winner) == _keyFor(tappedFrom) ? partner : tappedFrom;
+    final loser = keyFor(winner) == keyFor(tappedFrom) ? partner : tappedFrom;
 
     final confirmed = await _confirmMerge(context, loser: loser, winner: winner);
     if (confirmed != true) return;
 
     bloc.add(
       MergeCustomMealsEvent(
-        loserKey: _keyFor(loser),
-        winnerKey: _keyFor(winner),
+        loserKey: keyFor(loser),
+        winnerKey: keyFor(winner),
       ),
     );
   }
 
-  Future<MealEntity?> _chooseSurvivor(
+  static Future<MealEntity?> _chooseSurvivor(
     BuildContext context,
     MealEntity a,
     MealEntity b,
@@ -321,7 +345,7 @@ class CustomMealsTab extends StatelessWidget {
     );
   }
 
-  Future<bool?> _confirmMerge(
+  static Future<bool?> _confirmMerge(
     BuildContext context, {
     required MealEntity loser,
     required MealEntity winner,
@@ -357,10 +381,10 @@ class CustomMealsTab extends StatelessWidget {
 /// list's visual rhythm. Resolution is async because the absolute path
 /// is recomposed against the documents directory at render time —
 /// see [UserImageStorage.absolutePath] for the reasoning.
-class _MealLeadingThumbnail extends StatelessWidget {
+class MealLeadingThumbnail extends StatelessWidget {
   final MealEntity meal;
 
-  const _MealLeadingThumbnail({required this.meal});
+  const MealLeadingThumbnail({super.key, required this.meal});
 
   static const double _size = 52;
 

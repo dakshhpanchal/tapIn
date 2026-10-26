@@ -83,3 +83,80 @@
 
   return (ratePerWeek: ratePerWeek, weeksToTarget: weeksToTarget);
 }
+
+/// One tracked day reduced to the numbers the Trends averages need.
+typedef DaySample = ({
+  DateTime day,
+  double kcal,
+  double goal,
+  double carbs,
+  double fat,
+  double protein,
+});
+
+/// Averages over the logged days of one period (a week, a month, or the
+/// whole window). Untracked days are left out rather than counted as 0, so a
+/// day without logging doesn't drag the average down.
+typedef PeriodStats = ({
+  DateTime start,
+  int loggedDays,
+  double avgKcal,
+  double avgGoal,
+  double avgCarbs,
+  double avgFat,
+  double avgProtein,
+});
+
+/// A day counts as logged once any energy was tracked on it.
+bool isLoggedDay(DaySample s) => s.kcal > 0;
+
+DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+/// Monday of the week containing [d].
+DateTime weekStartOf(DateTime d) =>
+    DateTime(d.year, d.month, d.day - (d.weekday - DateTime.monday));
+
+DateTime monthStartOf(DateTime d) => DateTime(d.year, d.month);
+
+/// Averages the logged days in [samples], or null when none were logged.
+PeriodStats? periodStats(DateTime start, Iterable<DaySample> samples) {
+  final logged = samples.where(isLoggedDay).toList();
+  if (logged.isEmpty) return null;
+  double avg(double Function(DaySample) f) =>
+      logged.map(f).reduce((a, b) => a + b) / logged.length;
+  return (
+    start: start,
+    loggedDays: logged.length,
+    avgKcal: avg((s) => s.kcal),
+    avgGoal: avg((s) => s.goal),
+    avgCarbs: avg((s) => s.carbs),
+    avgFat: avg((s) => s.fat),
+    avgProtein: avg((s) => s.protein),
+  );
+}
+
+/// Groups [samples] by [periodStartOf] and averages each group, oldest first.
+/// Periods without a logged day are omitted.
+List<PeriodStats> groupedStats(
+  Iterable<DaySample> samples,
+  DateTime Function(DateTime) periodStartOf,
+) {
+  final groups = <DateTime, List<DaySample>>{};
+  for (final s in samples) {
+    groups.putIfAbsent(periodStartOf(_dateOnly(s.day)), () => []).add(s);
+  }
+  final starts = groups.keys.toList()..sort();
+  return [
+    for (final start in starts)
+      ?periodStats(start, groups[start]!),
+  ];
+}
+
+/// Share of logged days whose energy landed within [tolerance] of the goal.
+/// Null when there are no logged days with a goal.
+double? adherence(Iterable<DaySample> samples, {double tolerance = 0.1}) {
+  final logged = samples.where((s) => isLoggedDay(s) && s.goal > 0).toList();
+  if (logged.isEmpty) return null;
+  final hits = logged.where((s) => (s.kcal - s.goal).abs() <= s.goal * tolerance);
+  return hits.length / logged.length;
+}

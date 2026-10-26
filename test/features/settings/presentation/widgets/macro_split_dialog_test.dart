@@ -333,7 +333,6 @@ void main() {
 
     final carbsSlider = tester.widget<Slider>(find.byType(Slider).first);
     carbsSlider.onChanged!(44);
-    carbsSlider.onChangeEnd!(44);
     await tester.pump();
 
     await tester.tap(find.text(l10nEn.dialogOKLabel));

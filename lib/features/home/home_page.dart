@@ -110,6 +110,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             state.snackSharePct,
             state.waterMlToday,
             state.waterGoalMl,
+            state.trackWater,
           );
         } else {
           return _getLoadingContent();
@@ -167,6 +168,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     int snackSharePct,
     int waterMlToday,
     int waterGoalMl,
+    bool trackWater,
   ) {
     if (showDisclaimerDialog) {
       _showDisclaimerDialog(context);
@@ -192,10 +194,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     weightKg: userWeightKg,
                     bodyWeightUnit: bodyWeightUnit,
                   ),
-                  QuickWaterWidget(
-                    waterMlToday: waterMlToday,
-                    waterGoalMl: waterGoalMl,
-                  ),
+                  if (trackWater)
+                    QuickWaterWidget(
+                      waterMlToday: waterMlToday,
+                      waterGoalMl: waterGoalMl,
+                    ),
                 ],
               ),
             ),

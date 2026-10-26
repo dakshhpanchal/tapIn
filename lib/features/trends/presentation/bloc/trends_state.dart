@@ -25,6 +25,8 @@ class TrendsLoaded extends TrendsState {
   final double? targetWeightKg; // user's #119 target, for the chart reference
   final Map<DateTime, int> waterByDay; // ml logged per calendar day
   final int waterGoalMl;
+  final bool trackWater; // Settings → Track water intake
+  final double userWeightKg; // for protein per kg
 
   const TrendsLoaded({
     required this.rangeDays,
@@ -36,6 +38,8 @@ class TrendsLoaded extends TrendsState {
     required this.targetWeightKg,
     required this.waterByDay,
     required this.waterGoalMl,
+    this.trackWater = true,
+    this.userWeightKg = 0,
   });
 
   @override
@@ -49,6 +53,8 @@ class TrendsLoaded extends TrendsState {
         targetWeightKg,
         waterByDay,
         waterGoalMl,
+        trackWater,
+        userWeightKg,
       ];
 }
 

@@ -2,6 +2,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import 'package:opennutritracker/core/domain/entity/body_weight_unit_entity.dart';
 import 'package:opennutritracker/core/domain/entity/tracked_day_entity.dart';
 import 'package:opennutritracker/core/domain/entity/weight_log_entity.dart';
@@ -72,19 +73,29 @@ class _TrendsView extends StatelessWidget {
             const SizedBox(height: Dimens.spacing16),
             _RangeSelector(rangeDays: state.rangeDays),
             const SizedBox(height: Dimens.spacing16),
+            _SummaryCard(
+              days: state.days,
+              userWeightKg: state.userWeightKg,
+              palette: palette,
+            ),
+            const SizedBox(height: Dimens.spacing16),
             _CaloriesTrendCard(
                 days: state.days, rangeDays: state.windowDays, palette: palette),
+            const SizedBox(height: Dimens.spacing16),
+            _PeriodAveragesCard(days: state.days, palette: palette),
             const SizedBox(height: Dimens.spacing16),
             _MacrosTrendCard(
                 days: state.days, rangeDays: state.windowDays, palette: palette),
             const SizedBox(height: Dimens.spacing16),
-            _WaterTrendCard(
-              waterByDay: state.waterByDay,
-              goalMl: state.waterGoalMl,
-              rangeDays: state.windowDays,
-              palette: palette,
-            ),
-            const SizedBox(height: Dimens.spacing16),
+            if (state.trackWater) ...[
+              _WaterTrendCard(
+                waterByDay: state.waterByDay,
+                goalMl: state.waterGoalMl,
+                rangeDays: state.windowDays,
+                palette: palette,
+              ),
+              const SizedBox(height: Dimens.spacing16),
+            ],
             _WeightCard(
               entries: state.weight,
               bodyWeightUnit: state.bodyWeightUnit,
@@ -115,6 +126,7 @@ class _RangeSelector extends StatelessWidget {
             const ButtonSegment(value: 7, label: Text('7d')),
             const ButtonSegment(value: 30, label: Text('30d')),
             const ButtonSegment(value: 90, label: Text('90d')),
+            const ButtonSegment(value: 365, label: Text('1y')),
             // 0 is the "All" sentinel; the bloc resolves it to the full span.
             ButtonSegment(value: 0, label: Text(S.of(context).allItemsLabel)),
           ],
@@ -274,6 +286,12 @@ class _CaloriesTrendCard extends StatelessWidget {
       }
     }
     final avgGoal = goals.isEmpty ? 0.0 : goals.reduce((a, b) => a + b) / goals.length;
+    // Average over days that were actually logged, so empty days don't drag
+    // the number down. The dashed line on the chart is the average goal.
+    final loggedKcal = [for (final s in spots) if (s.y > 0) s.y];
+    final avgKcal = loggedKcal.isEmpty
+        ? 0.0
+        : loggedKcal.reduce((a, b) => a + b) / loggedKcal.length;
     final maxTracked = spots.fold<double>(0, (m, s) => s.y > m ? s.y : m);
     final maxY = [maxTracked, avgGoal].reduce((a, b) => a > b ? a : b) * 1.15 + 1;
 
@@ -282,7 +300,31 @@ class _CaloriesTrendCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(S.of(context).trendsCaloriesLabel, style: text.titleMedium),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Text(S.of(context).trendsCaloriesLabel,
+                    style: text.titleMedium),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${avgKcal.round()} ${EnergyDisplay.unitLabel(context)}',
+                    style: text.titleMedium?.copyWith(color: accent),
+                  ),
+                  Text(
+                    avgGoal > 0
+                        ? '${S.of(context).trendsAvgPerDayLabel} · '
+                            '${S.of(context).trendsVsGoalLabel} ${avgGoal.round()}'
+                        : S.of(context).trendsAvgPerDayLabel,
+                    style: text.bodySmall?.copyWith(color: palette.textMuted),
+                  ),
+                ],
+              ),
+            ],
+          ),
           const SizedBox(height: Dimens.spacing20),
           Semantics(
             label: S.of(context).trendsCaloriesLabel,
@@ -651,5 +693,245 @@ class _WeightCard extends StatelessWidget {
     if (context.mounted) {
       trendsBloc.add(LoadTrendsEvent(rangeDays: rangeDays));
     }
+  }
+}
+
+
+/// Samples for [days] in the shape the averaging helpers take.
+List<DaySample> _samplesOf(List<TrackedDayEntity> days) => [
+      for (final d in days)
+        (
+          day: d.day,
+          kcal: d.caloriesTracked,
+          goal: d.calorieGoal,
+          carbs: d.carbsTracked ?? 0,
+          fat: d.fatTracked ?? 0,
+          protein: d.proteinTracked ?? 0,
+        ),
+    ];
+
+/// Headline numbers for the selected range: average intake against goal,
+/// how many days were logged and how many hit the goal, the extremes, and
+/// protein per kg of body weight.
+class _SummaryCard extends StatelessWidget {
+  final List<TrackedDayEntity> days;
+  final double userWeightKg;
+  final AppPalette palette;
+  const _SummaryCard({
+    required this.days,
+    required this.userWeightKg,
+    required this.palette,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    final text = Theme.of(context).textTheme;
+    final samples = _samplesOf(days);
+    final logged = samples.where(isLoggedDay).toList();
+    final stats = periodStats(DateTime.now(), samples);
+    final onTarget = adherence(samples);
+    final unit = EnergyDisplay.unitLabel(context);
+
+    String kcal(double v) => '${EnergyDisplay.convert(context, v).round()}';
+    final tiles = <(String, String)>[];
+    if (stats != null) {
+      final diff = stats.avgKcal - stats.avgGoal;
+      tiles
+        ..add((s.trendsAvgPerLoggedDayLabel, '${kcal(stats.avgKcal)} $unit'))
+        ..add((
+          s.trendsVsGoalLabel,
+          '${diff >= 0 ? '+' : '−'}${EnergyDisplay.convert(context, diff.abs()).round()} $unit',
+        ))
+        ..add((s.trendsDaysLoggedLabel, '${stats.loggedDays}/${days.length}'));
+      if (onTarget != null) {
+        tiles.add((s.trendsOnTargetLabel, '${(onTarget * 100).round()}%'));
+      }
+      if (userWeightKg > 0) {
+        tiles.add((
+          s.trendsProteinPerKgLabel,
+          '${(stats.avgProtein / userWeightKg).toStringAsFixed(1)} g',
+        ));
+      }
+      final sorted = [...logged]..sort((a, b) => a.kcal.compareTo(b.kcal));
+      tiles
+        ..add((s.trendsHighestDayLabel, '${kcal(sorted.last.kcal)} $unit'))
+        ..add((s.trendsLowestDayLabel, '${kcal(sorted.first.kcal)} $unit'));
+    }
+
+    return AppCard(
+      padding: const EdgeInsets.all(Dimens.spacing20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(s.trendsSummaryTitle, style: text.titleMedium),
+          const SizedBox(height: Dimens.spacing16),
+          if (tiles.isEmpty)
+            Text('—', style: text.bodyMedium?.copyWith(color: palette.textMuted))
+          else
+            Wrap(
+              spacing: Dimens.spacing24,
+              runSpacing: Dimens.spacing16,
+              children: [
+                for (final (label, value) in tiles)
+                  SizedBox(
+                    width: 140,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(value, style: text.titleLarge),
+                        Text(label,
+                            style: text.bodySmall
+                                ?.copyWith(color: palette.textMuted)),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Average intake per week or per month across the selected range, as a bar
+/// chart against the goal plus a row per period. Weeks start on Monday. The
+/// monthly view also shows the average weekly total (daily average × 7).
+class _PeriodAveragesCard extends StatefulWidget {
+  final List<TrackedDayEntity> days;
+  final AppPalette palette;
+  const _PeriodAveragesCard({required this.days, required this.palette});
+
+  @override
+  State<_PeriodAveragesCard> createState() => _PeriodAveragesCardState();
+}
+
+class _PeriodAveragesCardState extends State<_PeriodAveragesCard> {
+  bool _monthly = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    final text = Theme.of(context).textTheme;
+    final accent = Theme.of(context).colorScheme.primary;
+    final palette = widget.palette;
+    final unit = EnergyDisplay.unitLabel(context);
+    final periods = groupedStats(
+      _samplesOf(widget.days),
+      _monthly ? monthStartOf : weekStartOf,
+    );
+    String kcal(double v) => '${EnergyDisplay.convert(context, v).round()}';
+    final locale = Localizations.localeOf(context).toString();
+    String periodLabel(DateTime start) => _monthly
+        ? DateFormat.yMMM(locale).format(start)
+        : DateFormat.MMMd(locale).format(start);
+
+    final maxKcal = periods.fold<double>(
+      0,
+      (m, p) => [m, p.avgKcal, p.avgGoal].reduce((a, b) => a > b ? a : b),
+    );
+
+    return AppCard(
+      padding: const EdgeInsets.all(Dimens.spacing20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(s.trendsAveragesTitle, style: text.titleMedium),
+              ),
+              SegmentedButton<bool>(
+                showSelectedIcon: false,
+                style: const ButtonStyle(
+                  visualDensity: VisualDensity.compact,
+                ),
+                segments: [
+                  ButtonSegment(value: false, label: Text(s.trendsWeeklyLabel)),
+                  ButtonSegment(value: true, label: Text(s.trendsMonthlyLabel)),
+                ],
+                selected: {_monthly},
+                onSelectionChanged: (v) => setState(() => _monthly = v.first),
+              ),
+            ],
+          ),
+          const SizedBox(height: Dimens.spacing16),
+          if (periods.isEmpty)
+            Text('—', style: text.bodyMedium?.copyWith(color: palette.textMuted))
+          else ...[
+            SizedBox(
+              height: 140,
+              child: BarChart(
+                BarChartData(
+                  maxY: EnergyDisplay.convert(context, maxKcal) * 1.15 + 1,
+                  gridData: const FlGridData(show: false),
+                  borderData: FlBorderData(show: false),
+                  titlesData: const FlTitlesData(show: false),
+                  barTouchData: BarTouchData(
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipItem: (group, _, rod, _) => BarTooltipItem(
+                        rod.toY.round().toString(),
+                        text.labelMedium ?? const TextStyle(),
+                      ),
+                    ),
+                  ),
+                  barGroups: [
+                    for (var i = 0; i < periods.length; i++)
+                      BarChartGroupData(x: i, barRods: [
+                        BarChartRodData(
+                          toY: EnergyDisplay.convert(context, periods[i].avgKcal),
+                          color: accent,
+                          width: periods.length > 14 ? 6 : 14,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ]),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: Dimens.spacing12),
+            // Newest period first, so the current one is on top.
+            for (final p in periods.reversed.take(12))
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(periodLabel(p.start), style: text.labelLarge),
+                          Text(
+                            s.trendsDaysLoggedShort(p.loggedDays),
+                            style: text.bodySmall
+                                ?.copyWith(color: palette.textMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${kcal(p.avgKcal)} $unit ${s.trendsAvgPerDayLabel}',
+                          style: text.bodyMedium?.copyWith(
+                              color: palette.textStrong,
+                              fontWeight: FontWeight.w700),
+                        ),
+                        if (_monthly)
+                          Text(
+                            '${kcal(p.avgKcal * 7)} $unit ${s.trendsAvgPerWeekLabel}',
+                            style: text.bodySmall
+                                ?.copyWith(color: palette.textMuted),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
   }
 }

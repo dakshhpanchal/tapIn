@@ -254,6 +254,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
             caloriesProfile: user.caloriesProfile,
           ),
           waterIntakes: waterIntakes,
+          trackWater: configData.trackWater,
         ),
       );
       await _publishCalorieWidget(

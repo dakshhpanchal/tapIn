@@ -59,6 +59,7 @@ class HomeLoadedState extends HomeState {
   // is the user-configurable target (Settings → Calculations).
   final int waterMlToday;
   final int waterGoalMl;
+  final bool trackWater;
   final List<WaterIntakeEntity> waterIntakes;
 
   const HomeLoadedState({
@@ -94,6 +95,7 @@ class HomeLoadedState extends HomeState {
     required this.waterMlToday,
     required this.waterGoalMl,
     required this.waterIntakes,
+    this.trackWater = true,
     this.showActivityTracking = true,
     this.showMealMacros = true,
   });
@@ -111,6 +113,7 @@ class HomeLoadedState extends HomeState {
     waterMlToday,
     waterGoalMl,
     waterIntakes,
+    trackWater,
     showActivityTracking,
   ];
 }

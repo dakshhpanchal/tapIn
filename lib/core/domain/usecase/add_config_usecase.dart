@@ -72,6 +72,10 @@ class AddConfigUsecase {
     await _configRepository.setConfigShowActivityTracking(show);
   }
 
+  Future<void> setConfigTrackWater(bool track) async {
+    await _configRepository.setConfigTrackWater(track);
+  }
+
   Future<void> setConfigShowMealMacros(bool show) async {
     await _configRepository.setConfigShowMealMacros(show);
   }

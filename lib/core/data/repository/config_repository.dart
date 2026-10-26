@@ -88,6 +88,10 @@ class ConfigRepository {
     await _configDataSource.setConfigShowActivityTracking(show);
   }
 
+  Future<void> setConfigTrackWater(bool track) async {
+    await _configDataSource.setConfigTrackWater(track);
+  }
+
   Future<void> setConfigShowMealMacros(bool show) async {
     await _configDataSource.setConfigShowMealMacros(show);
   }

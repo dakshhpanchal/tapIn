@@ -1,4 +1,4 @@
-package com.opennutritracker.ont.opennutritracker
+package com.tapin.app
 
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.records.ExerciseSessionRecord

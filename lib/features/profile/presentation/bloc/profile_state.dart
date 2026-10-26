@@ -27,6 +27,7 @@ class ProfileLoadedState extends ProfileState {
   // profile entry subtitle shows this so the user sees the value the
   // home chip is using without opening the dialog.
   final int effectiveWaterGoalMl;
+  final bool trackWater;
 
   const ProfileLoadedState({
     required this.userBMI,
@@ -34,14 +35,16 @@ class ProfileLoadedState extends ProfileState {
     required this.bodyWeightUnit,
     required this.usesImperialHeightUnits,
     required this.effectiveWaterGoalMl,
+    this.trackWater = true,
   });
 
   @override
   List<Object?> get props => [
-        userBMI,
-        userEntity,
-        bodyWeightUnit,
-        usesImperialHeightUnits,
-        effectiveWaterGoalMl,
-      ];
+    userBMI,
+    userEntity,
+    bodyWeightUnit,
+    usesImperialHeightUnits,
+    effectiveWaterGoalMl,
+    trackWater,
+  ];
 }

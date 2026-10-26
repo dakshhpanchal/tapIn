@@ -76,6 +76,7 @@ class _ProfilePageState extends State<ProfilePage> {
             state.bodyWeightUnit,
             state.usesImperialHeightUnits,
             state.effectiveWaterGoalMl,
+            state.trackWater,
           );
         } else {
           return _getLoadingContent();
@@ -95,6 +96,7 @@ class _ProfilePageState extends State<ProfilePage> {
     BodyWeightUnit bodyWeightUnit,
     bool usesImperialHeightUnits,
     int effectiveWaterGoalMl,
+    bool trackWater,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final palette = isDark ? AppPalette.dark : AppPalette.light;
@@ -140,11 +142,8 @@ class _ProfilePageState extends State<ProfilePage> {
               icon: Icons.trending_down_rounded,
               title: S.of(context).weeklyWeightGoalLabel,
               subtitle: _weeklyGoalSubtitle(context, user, bodyWeightUnit),
-              onTap: () => _showSetWeeklyWeightGoalDialog(
-                context,
-                user,
-                bodyWeightUnit,
-              ),
+              onTap: () =>
+                  _showSetWeeklyWeightGoalDialog(context, user, bodyWeightUnit),
             ),
           ],
         ),
@@ -171,9 +170,9 @@ class _ProfilePageState extends State<ProfilePage> {
                       lbLabel: S.of(context).lbsLabel,
                       stLabel: S.of(context).stLabel,
                     ),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: palette.textMuted,
-                        ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: palette.textMuted),
                   ),
                   // #119: When the user has set a concrete target weight, surface
                   // the distance to it directly below the current weight. The
@@ -182,9 +181,9 @@ class _ProfilePageState extends State<ProfilePage> {
                   if (user.targetWeightKg != null)
                     Text(
                       _targetWeightSubLabel(context, user, bodyWeightUnit),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: palette.textMuted,
-                          ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: palette.textMuted),
                     ),
                 ],
               ),
@@ -239,35 +238,35 @@ class _ProfilePageState extends State<ProfilePage> {
               icon: Icons.timer_rounded,
               title: S.of(context).profileFastingEntry,
               showChevron: true,
-              onTap: () =>
-                  Navigator.of(context).pushNamed(NavigationOptions.fastingRoute),
+              onTap: () => Navigator.of(
+                context,
+              ).pushNamed(NavigationOptions.fastingRoute),
             ),
           ],
         ),
+        if (trackWater) ...[
+          const SizedBox(height: Dimens.spacing24),
+          SectionHeader(
+            label: S.of(context).settingsWaterGoalLabel,
+            palette: palette,
+          ),
+          const SizedBox(height: Dimens.spacing12),
+          SectionGroup(
+            palette: palette,
+            tiles: [
+              _ProfileTile(
+                identifier: 'profile-water-goal',
+                palette: palette,
+                icon: Icons.water_drop_rounded,
+                title: S.of(context).settingsWaterGoalLabel,
+                subtitle: '$effectiveWaterGoalMl ${S.of(context).mlLabel}',
+                onTap: () => _showWaterGoalDialog(context),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: Dimens.spacing24),
-        SectionHeader(
-          label: S.of(context).settingsWaterGoalLabel,
-          palette: palette,
-        ),
-        const SizedBox(height: Dimens.spacing12),
-        SectionGroup(
-          palette: palette,
-          tiles: [
-            _ProfileTile(
-              identifier: 'profile-water-goal',
-              palette: palette,
-              icon: Icons.water_drop_rounded,
-              title: S.of(context).settingsWaterGoalLabel,
-              subtitle: '$effectiveWaterGoalMl ${S.of(context).mlLabel}',
-              onTap: () => _showWaterGoalDialog(context),
-            ),
-          ],
-        ),
-        const SizedBox(height: Dimens.spacing24),
-        SectionHeader(
-          label: S.of(context).profileLabel,
-          palette: palette,
-        ),
+        SectionHeader(label: S.of(context).profileLabel, palette: palette),
         const SizedBox(height: Dimens.spacing12),
         SectionGroup(
           palette: palette,
@@ -314,8 +313,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 palette: palette,
                 icon: Icons.tune_rounded,
                 title: S.of(context).caloriesProfileInfoTitle,
-                subtitle: (user.caloriesProfile ?? CaloriesProfileEntity.averaged)
-                    .getName(context),
+                subtitle:
+                    (user.caloriesProfile ?? CaloriesProfileEntity.averaged)
+                        .getName(context),
                 onTap: () {
                   _showCaloriesProfileDialog(context, user);
                 },
@@ -323,7 +323,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ],
         ),
         const SizedBox(height: Dimens.spacing24),
-        SectionHeader(label: S.of(context).recipesLabel, palette: palette),
+        SectionHeader(label: S.of(context).myFoodsLabel, palette: palette),
         const SizedBox(height: Dimens.spacing12),
         SectionGroup(
           palette: palette,
@@ -332,10 +332,11 @@ class _ProfilePageState extends State<ProfilePage> {
               identifier: 'profile-recipes',
               palette: palette,
               icon: Icons.menu_book_rounded,
-              title: S.of(context).recipesLabel,
+              title: S.of(context).myFoodsLabel,
               showChevron: true,
-              onTap: () =>
-                  Navigator.of(context).pushNamed(NavigationOptions.recipesRoute),
+              onTap: () => Navigator.of(
+                context,
+              ).pushNamed(NavigationOptions.recipesRoute),
             ),
           ],
         ),
@@ -394,11 +395,15 @@ class _ProfilePageState extends State<ProfilePage> {
     switch (bodyWeightUnit) {
       case BodyWeightUnit.kg:
         final sign = goal > 0 ? '+' : '';
-        return S.of(context).weeklyWeightGoalKgPerWeek('$sign${goal.toStringAsFixed(2)}');
+        return S
+            .of(context)
+            .weeklyWeightGoalKgPerWeek('$sign${goal.toStringAsFixed(2)}');
       case BodyWeightUnit.lb:
         final displayLb = goal * 2.20462;
         final sign = displayLb > 0 ? '+' : '';
-        return S.of(context).weeklyWeightGoalLbsPerWeek('$sign${displayLb.toStringAsFixed(2)}');
+        return S
+            .of(context)
+            .weeklyWeightGoalLbsPerWeek('$sign${displayLb.toStringAsFixed(2)}');
       case BodyWeightUnit.st:
         final displaySt = goal * 2.20462 / 14;
         final sign = displaySt > 0 ? '+' : '';
@@ -472,10 +477,8 @@ class _ProfilePageState extends State<ProfilePage> {
   ) async {
     final newKg = await showDialog<double>(
       context: context,
-      builder: (context) => SetWeightDialog(
-        initialKg: userEntity.weightKG,
-        unit: bodyWeightUnit,
-      ),
+      builder: (context) =>
+          SetWeightDialog(initialKg: userEntity.weightKG, unit: bodyWeightUnit),
     );
     if (newKg != null) {
       final now = DateTime.now();
@@ -680,12 +683,17 @@ class _ProfileTile extends StatelessWidget {
     return Semantics(
       identifier: identifier,
       child: ListTile(
-        leading: _IconChip(palette: palette, icon: icon, iconWidget: iconWidget),
+        leading: _IconChip(
+          palette: palette,
+          icon: icon,
+          iconWidget: iconWidget,
+        ),
         title: Text(
           title,
           style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
-        subtitle: subtitleWidget ??
+        subtitle:
+            subtitleWidget ??
             (subtitle != null
                 ? Text(
                     subtitle!,

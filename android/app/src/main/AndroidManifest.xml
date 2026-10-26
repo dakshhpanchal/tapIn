@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.opennutritracker.ont.opennutritracker">
+    package="com.tapin.app">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- #312: Notification reminders -->

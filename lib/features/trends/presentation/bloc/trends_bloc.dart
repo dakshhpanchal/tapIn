@@ -120,6 +120,8 @@ class TrendsBloc extends Bloc<TrendsEvent, TrendsState> {
             user.gender,
             caloriesProfile: user.caloriesProfile,
           ),
+          trackWater: config.trackWater,
+          userWeightKg: user.weightKG,
         ));
       } catch (e) {
         emit(TrendsFailed(e.toString()));

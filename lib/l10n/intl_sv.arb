@@ -123,9 +123,9 @@
   "ageLabel": "Ålder",
   "allItemsLabel": "Alla",
   "alphaVersionName": "[Alfa]",
-  "appDescription": "OpenNutriTracker är en kostnadsfri app med öppen källkod som hjälper dig att följa ditt kalori- och näringsintag och respekterar din integritet.",
+  "appDescription": "tapIn är en kostnadsfri app med öppen källkod som hjälper dig att följa ditt kalori- och näringsintag och respekterar din integritet.",
   "appLicenseLabel": "GPL-3.0-licens",
-  "appTitle": "OpenNutriTracker",
+  "appTitle": "tapIn",
   "appVersionName": "Version {versionNumber}",
   "@appVersionName": {
     "placeholders": {
@@ -326,7 +326,7 @@
   "discardChangesContent": "Dina osparade ändringar går förlorade.",
   "discardChangesTitle": "Förkasta ändringar?",
   "disclaimerAcknowledgeLabel": "Jag förstår",
-  "disclaimerText": "OpenNutriTracker är inte en medicinsk app. Uppgifterna som tillhandahålls är inte validerade och bör användas med försiktighet. Eftersträva en hälsosam livsstil och kontakta hälso- och sjukvårdspersonal om du har problem. Användning vid sjukdom, graviditet eller amning rekommenderas inte. Tryck på informationsikonen på startsidan eller profilsidan för att se de vetenskapligt granskade källorna bakom varje beräkning.",
+  "disclaimerText": "tapIn är inte en medicinsk app. Uppgifterna som tillhandahålls är inte validerade och bör användas med försiktighet. Eftersträva en hälsosam livsstil och kontakta hälso- och sjukvårdspersonal om du har problem. Användning vid sjukdom, graviditet eller amning rekommenderas inte. Tryck på informationsikonen på startsidan eller profilsidan för att se de vetenskapligt granskade källorna bakom varje beräkning.",
   "downloadSampleCsvAction": "Exempellivsmedel (csv)",
   "downloadSampleJsonAction": "Exempellivsmedel (json)",
   "downloadSampleRecipesCsvAction": "Exempelrecept (csv)",
@@ -561,7 +561,7 @@
   "notificationsDailyReminderBody": "Glöm inte att registrera dina måltider i dag!",
   "notificationsDailyReminderChannelName": "Dagliga påminnelser",
   "notificationsDailyReminderChannelDescription": "Daglig påminnelse om att registrera måltider",
-  "notificationsDailyReminderTitle": "OpenNutriTracker",
+  "notificationsDailyReminderTitle": "tapIn",
   "notificationsPermissionDeniedSnack": "Tillstånd att visa aviseringar nekades.",
   "nutrientPanelAllHiddenLabel": "Alla näringsämnen är dolda – aktivera några under Inställningar → Näringsämnen.",
   "nutrientPanelLimitLabel": "gräns",
@@ -1174,12 +1174,12 @@
   "sourcesIconTooltip": "Visa källor",
   "sourcesMacrosDescription": "Standardfördelningen med 60 % kolhydrater, 25 % fett och 15 % protein ligger inom de intervall för befolkningens näringsintag som WHO har publicerat. Du kan justera fördelningen under Inställningar → Beräkningar. Källa: WHO Technical Report Series 916 (2003), Diet, Nutrition and the Prevention of Chronic Diseases.",
   "sourcesMacrosTitle": "Fördelning av makronäringsämnen",
-  "sourcesNonBinaryDescription": "Forskning om energiförbrukning har historiskt utgått från två könskategorier. Det finns därför ingen enskild validerad formel för total daglig energiförbrukning (TDEE) för icke-binära personer. I OpenNutriTracker kan du därför välja mellan ett genomsnittligt referensvärde, ett referensvärde för typisk östrogenprofil eller ett referensvärde för typisk testosteronprofil under Inställningar → Beräkningar. Om ett exakt värde har betydelse för din vård bör du tala med vårdpersonal som känner till din hormonstatus.",
+  "sourcesNonBinaryDescription": "Forskning om energiförbrukning har historiskt utgått från två könskategorier. Det finns därför ingen enskild validerad formel för total daglig energiförbrukning (TDEE) för icke-binära personer. I tapIn kan du därför välja mellan ett genomsnittligt referensvärde, ett referensvärde för typisk östrogenprofil eller ett referensvärde för typisk testosteronprofil under Inställningar → Beräkningar. Om ett exakt värde har betydelse för din vård bör du tala med vårdpersonal som känner till din hormonstatus.",
   "sourcesNutrientReferenceTitle": "Referensvärden för näringsintag",
   "sourcesNutrientReferenceDescription": "De dagliga referensvärdena i dagbokens näringsöversikt kommer från sammanfattningen av Dietary Reference Intakes från Institute of Medicine, som anger mål för vuxna för respektive näringsämne.",
   "sourcesNonBinaryTitle": "Uppskattning av kaloribehov för icke-binära",
   "sourcesOpenSourceLabel": "Visa källa",
-  "sourcesScreenIntro": "OpenNutriTracker använder väletablerade, vetenskapligt granskade metoder för alla beräkningar som visas. Referenserna nedan länkar till originalkällorna så att du själv kan kontrollera varje värde.",
+  "sourcesScreenIntro": "tapIn använder väletablerade, vetenskapligt granskade metoder för alla beräkningar som visas. Referenserna nedan länkar till originalkällorna så att du själv kan kontrollera varje värde.",
   "sugarLabel": "sockerarter",
   "suggestedLabel": "Föreslaget",
   "suppliedLabel": "tillfört",
@@ -1427,7 +1427,7 @@
   "aiConsentChangeProviderNote": "Du kan byta leverantör senare. Varje leverantörs villkor visas i Inställningar, och inget du skriver eller fotograferar skickas förrän du använder funktionen.",
   "aiConsentOwnServerCheckNote": "När du sparar serveradressen tillfrågas servern också om vilka modeller den erbjuder, och en inställningskontroll körs med en förutbestämd exempelrad och ett exempelfoto från oss – aldrig något av ditt material.",
   "aiConsentAgreeLabel": "JAG FÖRSTÅR",
-  "aiAssistDisclosureCommon": "Din dagbok och din profil skickas aldrig. Näringsvärden kommer alltid från livsmedelsdatabaserna, aldrig från modellen. Nyckeln sparas endast på den här enheten: OpenNutriTracker får aldrig se den och betalar inte för användningen.",
+  "aiAssistDisclosureCommon": "Din dagbok och din profil skickas aldrig. Näringsvärden kommer alltid från livsmedelsdatabaserna, aldrig från modellen. Nyckeln sparas endast på den här enheten: tapIn får aldrig se den och betalar inte för användningen.",
   "aiAssistDisclosureAnthropic": "När en nyckel har sparats skickas texten som du skriver på skärmen för att lägga till flera livsmedel – och eventuella foton som du väljer att tolka där – till Anthropic. Foton skickas för den enskilda förfrågan och sparas aldrig.",
   "aiAssistDisclosureOpenRouter": "När en nyckel har sparats skickas texten som du skriver på skärmen för att lägga till flera livsmedel – och eventuella foton som du väljer att tolka där – till OpenRouter, som vidarebefordrar materialet till leverantören som kör din valda modell. OpenRouter vidarebefordrar också en kontoknuten identitet till leverantören vid varje förfrågan, och detta kan inte stängas av. OpenRouter sparar inte ditt innehåll utöver vad som behövs för att förmedla förfrågan, utom när det krävs för att upptäcka missbruk, för säkerhet eller fakturering eller för att följa lagen. Leverantören som kör modellen sparar det den tar emot enligt sin egen policy.",
   "aiAssistDisclosureOpenAI": "När en nyckel har sparats skickas texten som du skriver på skärmen för att lägga till flera livsmedel – och eventuella foton som du väljer att tolka där – till OpenAI. OpenAI sparar det du skickar i upp till 30 dagar för att övervaka missbruk, och längre om lagen kräver det eller om det skäligen behövs för att skydda tjänsterna eller en tredje part från skada.",
@@ -1539,7 +1539,7 @@
   "bulkAddWaitModelLoadingLabel": "Servern kan hålla på att läsa in modellen. Den första förfrågan efter en tids uppehåll kan ta en eller två minuter. Det är normalt.",
   "bulkAddWaitCancelLabel": "Avbryt",
   "bulkAddPhotoLabel": "Tolka ett foto",
-  "bulkAddPhotoDisclosureCommon": "OpenNutriTracker sparar ingen egen kopia, och fotot tas aldrig med i dina exporter.",
+  "bulkAddPhotoDisclosureCommon": "tapIn sparar ingen egen kopia, och fotot tas aldrig med i dina exporter.",
   "bulkAddPhotoDisclosureAnthropic": "Fotot skickas till Anthropic för att identifiera livsmedlen i det.",
   "bulkAddPhotoDisclosureOpenRouter": "Fotot skickas till OpenRouter, som vidarebefordrar det till {provider} för att identifiera livsmedlen i det.",
   "@bulkAddPhotoDisclosureOpenRouter": {
@@ -1612,7 +1612,7 @@
       }
     }
   },
-  "healthSyncPermissionDeniedLabel": "Åtkomst till {platform} beviljades inte. Tillåt OpenNutriTracker att läsa träningspass för att kunna importera dem.",
+  "healthSyncPermissionDeniedLabel": "Åtkomst till {platform} beviljades inte. Tillåt tapIn att läsa träningspass för att kunna importera dem.",
   "@healthSyncPermissionDeniedLabel": {
     "placeholders": {
       "platform": {
@@ -1628,7 +1628,7 @@
       }
     }
   },
-  "healthSyncDisclosureBody": "OpenNutriTracker läser dina avslutade träningspass från {platform}: typen av träning, när passen ägde rum, hur länge de varade och den angivna energiförbrukningen.\n\nTräningspassen sparas i dagboken som aktiviteter som du kan redigera eller ta bort. Den angivna energiförbrukningen höjer dagens energimål med en andel som du väljer.",
+  "healthSyncDisclosureBody": "tapIn läser dina avslutade träningspass från {platform}: typen av träning, när passen ägde rum, hur länge de varade och den angivna energiförbrukningen.\n\nTräningspassen sparas i dagboken som aktiviteter som du kan redigera eller ta bort. Den angivna energiförbrukningen höjer dagens energimål med en andel som du väljer.",
   "@healthSyncDisclosureBody": {
     "placeholders": {
       "platform": {
@@ -1636,7 +1636,7 @@
       }
     }
   },
-  "healthSyncDisclosureBodyFatAddendum": "OpenNutriTracker läser också den senast registrerade kroppsfettprocenten i {platform}. Värdet används för att föreslå hur stor andelen ska vara.",
+  "healthSyncDisclosureBodyFatAddendum": "tapIn läser också den senast registrerade kroppsfettprocenten i {platform}. Värdet används för att föreslå hur stor andelen ska vara.",
   "@healthSyncDisclosureBodyFatAddendum": {
     "placeholders": {
       "platform": {
