@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:opennutritracker/core/presentation/widgets/dynamic_ont_logo.dart';
+import 'package:opennutritracker/core/presentation/widgets/dynamic_tapin_logo.dart';
 import 'package:opennutritracker/generated/l10n.dart';
 
 class AppBannerVersion extends StatelessWidget {
@@ -11,7 +11,7 @@ class AppBannerVersion extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const SizedBox(height: 70, child: DynamicOntLogo()),
+        const SizedBox(height: 70, child: DynamicTapInLogo()),
         Text(
           S.of(context).appTitle,
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(

@@ -9,6 +9,10 @@ double estimateOneRepMax(double weightKg, int reps) {
   return weightKg * (1 + (reps > 12 ? 12 : reps) / 30);
 }
 
+/// A set that was really done: ticked, with at least one rep. A set ticked
+/// with no reps is treated as skipped, not as a set of zero.
+bool isLoggedSet(SetEntry s) => s.done && s.reps > 0;
+
 /// Sets that count towards volume and records: finished working sets.
 Iterable<SetEntry> workingSets(WorkoutExercise e) =>
     e.sets.where((s) => s.done && !s.warmup && s.reps > 0);

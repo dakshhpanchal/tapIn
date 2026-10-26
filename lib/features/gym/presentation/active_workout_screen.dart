@@ -216,19 +216,19 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     final active = session.exercises.where((e) => !e.skipped);
     final pending = active.fold<int>(
       0,
-      (n, e) => n + e.sets.where((s) => !s.done).length,
+      (n, e) => n + e.sets.where((s) => !isLoggedSet(s)).length,
     );
-    final anyDone = active.any((e) => e.sets.any((s) => s.done));
+    final anyDone = active.any((e) => e.sets.any(isLoggedSet));
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(anyDone ? 'Finish workout?' : 'Nothing logged'),
         content: Text(
           !anyDone
-              ? 'No set is marked done, so finishing discards this workout.'
+              ? 'No set has reps logged, so finishing discards this workout.'
               : pending > 0
-              ? '$pending unfinished ${pending == 1 ? 'set is' : 'sets are'} '
-                    'left out of the workout.'
+              ? '$pending ${pending == 1 ? 'set is' : 'sets are'} unticked or have no '
+                    'reps, so ${pending == 1 ? 'it is' : 'they are'} left out.'
               : 'Save this workout to your history.',
         ),
         actions: [

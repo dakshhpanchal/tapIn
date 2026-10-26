@@ -520,4 +520,26 @@ void main() {
     expect(await cubit.finishWorkout(), isNull);
     expect(cubit.state.sessions, isEmpty);
   });
+
+  test(
+    'a set ticked with no reps counts as skipped, not as a set of zero',
+    () async {
+      final cubit = await loaded();
+      await cubit.startEmptyWorkout();
+      await cubit.addExercise(cubit.state.exercises.first);
+      await cubit.addSet(0);
+      await cubit.addSet(0);
+      // Set 1 done with reps, set 2 ticked with none, set 3 left alone.
+      await cubit.updateSet(
+        0,
+        0,
+        (s) => s.copyWith(weightKg: 60, reps: 8, done: true),
+      );
+      await cubit.updateSet(0, 1, (s) => s.copyWith(weightKg: 60, done: true));
+
+      final done = await cubit.finishWorkout();
+      expect(done!.session.exercises.single.sets, hasLength(1));
+      expect(sessionSetCount(done.session), 1);
+    },
+  );
 }

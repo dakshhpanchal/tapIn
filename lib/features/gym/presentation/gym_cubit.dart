@@ -241,11 +241,11 @@ class GymCubit extends Cubit<GymState> {
       endedAt: DateTime.now(),
       exercises: [
         for (final e in current.exercises)
-          if (!e.skipped && e.sets.any((s) => s.done))
+          if (!e.skipped && e.sets.any(isLoggedSet))
             e.copyWith(
               sets: [
                 for (final s in e.sets)
-                  if (s.done) s,
+                  if (isLoggedSet(s)) s,
               ],
             ),
       ],

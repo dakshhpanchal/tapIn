@@ -129,7 +129,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         children: [
           if (_isDemoData) const DemoModeBanner(),
           Expanded(
-            child: IndexedStack(
+            child: _LazyIndexedStack(
               index: _selectedPageIndex,
               children: _bodyPages,
             ),
@@ -289,6 +289,40 @@ class _NavItem extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// An [IndexedStack] that builds a tab the first time it is shown and keeps it
+/// (and its scroll position) afterwards. Opening the app no longer pays for
+/// every tab, such as the charts on Trends, up front.
+class _LazyIndexedStack extends StatefulWidget {
+  final int index;
+  final List<Widget> children;
+
+  const _LazyIndexedStack({required this.index, required this.children});
+
+  @override
+  State<_LazyIndexedStack> createState() => _LazyIndexedStackState();
+}
+
+class _LazyIndexedStackState extends State<_LazyIndexedStack> {
+  late final Set<int> _built = {widget.index};
+
+  @override
+  void didUpdateWidget(_LazyIndexedStack old) {
+    super.didUpdateWidget(old);
+    _built.add(widget.index);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IndexedStack(
+      index: widget.index,
+      children: [
+        for (var i = 0; i < widget.children.length; i++)
+          _built.contains(i) ? widget.children[i] : const SizedBox.shrink(),
+      ],
     );
   }
 }
