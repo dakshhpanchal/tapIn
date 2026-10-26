@@ -74,6 +74,17 @@ class DeleteAllUserDataUsecase {
       await recordTrackedDayBoundary(ConfigDataSource(_hiveDBProvider));
     });
 
+    // tapIn: gym data is not per-profile, and "delete all my data" is meant to
+    // leave nothing behind, so it goes too.
+    if (_hiveDBProvider.gymBoxesOpen) {
+      await Future.wait([
+        _hiveDBProvider.gymExerciseBox.clear(),
+        _hiveDBProvider.gymSessionBox.clear(),
+        _hiveDBProvider.gymRoutineBox.clear(),
+        _hiveDBProvider.gymMetaBox.clear(),
+      ]);
+    }
+
     // The iOS widget reads its own copy of today's figures from the App
     // Group, not from Hive, so it would keep showing the deleted profile
     // until the next day boundary. Best effort for the same reason as the

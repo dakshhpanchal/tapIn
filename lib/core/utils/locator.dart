@@ -88,6 +88,8 @@ import 'package:opennutritracker/features/add_meal/domain/usecase/read_meal_phot
 import 'package:opennutritracker/features/add_meal/domain/usecase/read_meal_text_usecase.dart';
 import 'package:opennutritracker/features/add_meal/domain/usecase/run_ai_endpoint_probe_usecase.dart';
 import 'package:opennutritracker/core/utils/hive_db_provider.dart';
+import 'package:opennutritracker/features/gym/data/gym_repository.dart';
+import 'package:opennutritracker/features/gym/presentation/gym_cubit.dart';
 import 'package:opennutritracker/core/utils/daily_reminder_scheduler.dart';
 import 'package:opennutritracker/core/utils/notification_service.dart';
 import 'package:opennutritracker/core/utils/profile_bootstrap.dart';
@@ -162,6 +164,18 @@ Future<void> initLocator() async {
   locator.registerLazySingleton<HiveDBProvider>(() => hiveDBProvider);
   locator.registerLazySingleton<AiCredentialStorage>(
     () => AiCredentialStorage(),
+  );
+  // tapIn gym tracker.
+  locator.registerLazySingleton<GymRepository>(
+    () => GymRepository(
+      hiveDBProvider.gymExerciseBox,
+      hiveDBProvider.gymSessionBox,
+      hiveDBProvider.gymRoutineBox,
+      hiveDBProvider.gymMetaBox,
+    ),
+  );
+  locator.registerLazySingleton<GymCubit>(
+    () => GymCubit(locator<GymRepository>(), locator<GetConfigUsecase>()),
   );
   // One client for the app rather than one per interpret call: a fresh
   // http.Client carries its own connection pool and is never closed here,

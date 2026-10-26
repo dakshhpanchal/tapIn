@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:opennutritracker/core/domain/usecase/get_config_usecase.dart';
 import 'package:opennutritracker/core/presentation/widgets/add_item_bottom_sheet.dart';
 import 'package:opennutritracker/core/presentation/widgets/demo_mode_banner.dart';
+import 'package:opennutritracker/features/gym/presentation/gym_page.dart';
 import 'package:opennutritracker/core/styles/app_palette.dart';
 import 'package:opennutritracker/core/utils/health_rationale_service.dart';
 import 'package:opennutritracker/core/utils/locator.dart';
@@ -104,12 +105,14 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     _bodyPages = [
       const HomePage(),
       const DiaryPage(),
+      const GymPage(),
       const TrendsPage(),
       const ProfilePage(),
     ];
     _appbarPages = [
       const HomeAppbar(),
       MainAppbar(title: S.of(context).diaryLabel, iconData: Icons.book),
+      MainAppbar(title: 'Gym', iconData: Icons.fitness_center),
       MainAppbar(title: S.of(context).trendsLabel, iconData: Icons.insights),
       MainAppbar(title: S.of(context).youLabel, iconData: Icons.account_circle),
     ];
@@ -150,48 +153,72 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         padding: EdgeInsets.zero,
         shape: const CircularNotchedRectangle(),
         notchMargin: 8,
+        // Two equal halves around the centre notch so the Add button stays
+        // centred however many items each side holds.
         child: Row(
           children: [
-            _NavItem(
-              id: 'nav-home',
-              icon: Icons.home_outlined,
-              selectedIcon: Icons.home_rounded,
-              label: S.of(context).homeLabel,
-              index: 0,
-              selectedIndex: _selectedPageIndex,
-              palette: palette,
-              onTap: _setPage,
-            ),
-            _NavItem(
-              id: 'nav-diary',
-              icon: Icons.book_outlined,
-              selectedIcon: Icons.book_rounded,
-              label: S.of(context).diaryLabel,
-              index: 1,
-              selectedIndex: _selectedPageIndex,
-              palette: palette,
-              onTap: _setPage,
+            Expanded(
+              child: Row(
+                children: [
+                  _NavItem(
+                    id: 'nav-home',
+                    icon: Icons.home_outlined,
+                    selectedIcon: Icons.home_rounded,
+                    label: S.of(context).homeLabel,
+                    index: 0,
+                    selectedIndex: _selectedPageIndex,
+                    palette: palette,
+                    onTap: _setPage,
+                  ),
+                  _NavItem(
+                    id: 'nav-diary',
+                    icon: Icons.book_outlined,
+                    selectedIcon: Icons.book_rounded,
+                    label: S.of(context).diaryLabel,
+                    index: 1,
+                    selectedIndex: _selectedPageIndex,
+                    palette: palette,
+                    onTap: _setPage,
+                  ),
+                  _NavItem(
+                    id: 'nav-gym',
+                    icon: Icons.fitness_center_outlined,
+                    selectedIcon: Icons.fitness_center_rounded,
+                    label: 'Gym',
+                    index: 2,
+                    selectedIndex: _selectedPageIndex,
+                    palette: palette,
+                    onTap: _setPage,
+                  ),
+                ],
+              ),
             ),
             const SizedBox(width: 64), // notch gap for the centre Add FAB
-            _NavItem(
-              id: 'nav-trends',
-              icon: Icons.insights_outlined,
-              selectedIcon: Icons.insights_rounded,
-              label: S.of(context).trendsLabel,
-              index: 2,
-              selectedIndex: _selectedPageIndex,
-              palette: palette,
-              onTap: _setPage,
-            ),
-            _NavItem(
-              id: 'nav-you',
-              icon: Icons.account_circle_outlined,
-              selectedIcon: Icons.account_circle_rounded,
-              label: S.of(context).youLabel,
-              index: 3,
-              selectedIndex: _selectedPageIndex,
-              palette: palette,
-              onTap: _setPage,
+            Expanded(
+              child: Row(
+                children: [
+                  _NavItem(
+                    id: 'nav-trends',
+                    icon: Icons.insights_outlined,
+                    selectedIcon: Icons.insights_rounded,
+                    label: S.of(context).trendsLabel,
+                    index: 3,
+                    selectedIndex: _selectedPageIndex,
+                    palette: palette,
+                    onTap: _setPage,
+                  ),
+                  _NavItem(
+                    id: 'nav-you',
+                    icon: Icons.account_circle_outlined,
+                    selectedIcon: Icons.account_circle_rounded,
+                    label: S.of(context).youLabel,
+                    index: 4,
+                    selectedIndex: _selectedPageIndex,
+                    palette: palette,
+                    onTap: _setPage,
+                  ),
+                ],
+              ),
             ),
           ],
         ),

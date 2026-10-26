@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:opennutritracker/core/domain/entity/intake_entity.dart';
+import 'package:opennutritracker/core/presentation/widgets/intake_card.dart';
 import 'package:opennutritracker/core/utils/calc/unit_calc.dart';
 import 'package:opennutritracker/core/utils/custom_text_input_formatter.dart';
 import 'package:opennutritracker/generated/l10n.dart';
@@ -21,13 +22,22 @@ class EditDialog extends StatefulWidget {
 class _EditDialogState extends State<EditDialog> {
   late TextEditingController amountEditingController;
 
+  /// Grams per serving when the intake was logged in servings, else null.
+  double? get _servingSize => intakeServingCount(widget.intakeEntity) == null
+      ? null
+      : widget.intakeEntity.meal.servingQuantity;
+
   @override
   void initState() {
     super.initState();
-    double initialAmount = _convertValue(
-      widget.intakeEntity.amount,
-      widget.intakeEntity.meal.mealUnit,
-    );
+    // Logged in servings: edit in servings, the way it was logged.
+    final servings = intakeServingCount(widget.intakeEntity);
+    double initialAmount =
+        servings ??
+        _convertValue(
+          widget.intakeEntity.amount,
+          widget.intakeEntity.meal.mealUnit,
+        );
     amountEditingController = TextEditingController(
       text: initialAmount.toStringAsFixed(2),
     );
@@ -44,9 +54,22 @@ class _EditDialogState extends State<EditDialog> {
             controller: amountEditingController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: CustomTextInputFormatter.doubleOnly(),
+            onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
               labelText: S.of(context).quantityLabel,
-              suffixText: _convertUnit(widget.intakeEntity.meal.mealUnit ?? ''),
+              suffixText: _servingSize == null
+                  ? _convertUnit(widget.intakeEntity.meal.mealUnit ?? '')
+                  : S
+                        .of(context)
+                        .measureUnitServing(
+                          double.tryParse(
+                                amountEditingController.text.replaceAll(
+                                  ',',
+                                  '.',
+                                ),
+                              ) ??
+                              1,
+                        ),
             ),
           ),
         ],
@@ -58,6 +81,12 @@ class _EditDialogState extends State<EditDialog> {
               amountEditingController.text.replaceAll(',', '.'),
             );
             if (newAmount == null) return;
+            final servingSize = _servingSize;
+            if (servingSize != null) {
+              // The caller stores grams; servings are amount / serving size.
+              Navigator.of(context).pop(newAmount * servingSize);
+              return;
+            }
             Navigator.of(context).pop(
               _convertBackToMetricValue(
                 newAmount,

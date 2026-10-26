@@ -75,6 +75,12 @@ class HiveDBProvider extends ChangeNotifier {
   // Only the genuinely personal nutrition goals live in the per-profile
   // ConfigBox; everything else is read from here.
   static const appConfigBoxName = 'AppConfigBox';
+  // tapIn gym tracker: exercises, finished workouts, routines and the workout
+  // in progress, each stored as JSON strings. Global rather than per-profile.
+  static const gymExerciseBoxName = 'GymExerciseBox';
+  static const gymSessionBoxName = 'GymSessionBox';
+  static const gymRoutineBoxName = 'GymRoutineBox';
+  static const gymMetaBoxName = 'GymMetaBox';
 
   // The base names of every per-profile box, used when opening, closing,
   // or deleting a profile's box-set. The custom-meal, recipe and
@@ -105,6 +111,13 @@ class HiveDBProvider extends ChangeNotifier {
   late final Box<MealDBO> customMealBox;
   late final Box<RecipeDBO> recipeBox;
   late final Box<CustomActivityTemplateDBO> customActivityTemplateBox;
+  late final Box<String> gymExerciseBox;
+  late final Box<String> gymSessionBox;
+  late final Box<String> gymRoutineBox;
+  late final Box<String> gymMetaBox;
+  // False on providers that never ran [initHiveDB] (scoped providers, tests),
+  // whose gym boxes were never opened.
+  bool gymBoxesOpen = false;
 
   // Per-profile boxes. Nullable rather than `late` so that a read during
   // the brief close/open window of a profile switch throws a descriptive
@@ -190,6 +203,11 @@ class HiveDBProvider extends ChangeNotifier {
     customActivityTemplateBox = await _openEncryptedBox(
       customActivityTemplateBoxName,
     );
+    gymExerciseBox = await _openEncryptedBox(gymExerciseBoxName);
+    gymSessionBox = await _openEncryptedBox(gymSessionBoxName);
+    gymRoutineBox = await _openEncryptedBox(gymRoutineBoxName);
+    gymMetaBox = await _openEncryptedBox(gymMetaBoxName);
+    gymBoxesOpen = true;
   }
 
   /// Opens the per-profile box-set for [profileId] / [boxSuffix] and
