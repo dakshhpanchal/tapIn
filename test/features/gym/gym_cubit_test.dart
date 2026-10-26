@@ -593,4 +593,45 @@ void main() {
       expect(back.duration.inMinutes, 40);
     },
   );
+
+  test('rest days can be logged, undone, and survive a restart', () async {
+    final cubit = await loaded();
+    final today = DateTime(2026, 10, 27, 9, 30);
+    expect(cubit.state.restDays, isEmpty);
+
+    await cubit.setRestDay(today, true);
+    await cubit.setRestDay(DateTime(2026, 10, 25), true);
+    expect(cubit.state.restDays, {'2026-10-27', '2026-10-25'});
+    // Logging the same day twice is still one rest day.
+    await cubit.setRestDay(today, true);
+    expect(cubit.state.restDays, hasLength(2));
+
+    final restarted = await loaded();
+    expect(restarted.state.restDays, {'2026-10-27', '2026-10-25'});
+
+    await restarted.setRestDay(today, false);
+    expect(restarted.state.restDays, {'2026-10-25'});
+    expect((await loaded()).state.restDays, {'2026-10-25'});
+  });
+
+  test('rest days travel in the workouts export and import', () async {
+    final cubit = await loaded();
+    await cubit.setRestDay(DateTime(2026, 10, 20), true);
+    await cubit.setRestDay(DateTime(2026, 10, 22), true);
+    final json = cubit.exportJson();
+    expect(json, contains('"restDays"'));
+
+    final other = GymCubit(await freshRepo(), _FakeConfig());
+    await other.load();
+    final plan = await other.importJson(json);
+    expect(plan.restDays, ['2026-10-20', '2026-10-22']);
+    expect(other.state.restDays, {'2026-10-20', '2026-10-22'});
+
+    // Importing again changes nothing, and a bad date is skipped with a warning.
+    await other.importJson(json);
+    expect(other.state.restDays, hasLength(2));
+    final bad = await other.importJson('{"restDays":["2026-10-30","nope"]}');
+    expect(bad.warnings, hasLength(1));
+    expect(other.state.restDays, contains('2026-10-30'));
+  });
 }

@@ -142,6 +142,8 @@ String _summary(GymImportPlan plan) {
           '(${plan.workoutsUpdated} replaced an existing one)',
     if (plan.sessions.isNotEmpty)
       '${plan.sessions.length} logged workout${plan.sessions.length == 1 ? '' : 's'}',
+    if (plan.restDays.isNotEmpty)
+      '${plan.restDays.length} rest day${plan.restDays.length == 1 ? '' : 's'}',
     if (plan.sessionsSkipped > 0)
       '${plan.sessionsSkipped} already in your history, skipped',
     if (plan.updatedExercises.isNotEmpty)

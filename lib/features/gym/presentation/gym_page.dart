@@ -50,6 +50,8 @@ class _GymPageState extends State<GymPage> {
               _ActiveCard(session: state.active!),
               const SizedBox(height: Dimens.spacing16),
             ],
+            _RestDayCard(restDays: state.restDays),
+            const SizedBox(height: Dimens.spacing16),
             _WeekCard(sessions: state.sessions),
             const SizedBox(height: Dimens.spacing16),
             Row(
@@ -110,7 +112,7 @@ class _GymPageState extends State<GymPage> {
             const SizedBox(height: Dimens.spacing16),
             Text('History', style: text.titleMedium),
             const SizedBox(height: Dimens.spacing8),
-            if (state.sessions.isEmpty)
+            if (state.sessions.isEmpty && state.restDays.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: Dimens.spacing16),
                 child: Text(
@@ -120,13 +122,33 @@ class _GymPageState extends State<GymPage> {
                 ),
               )
             else
-              for (final s in state.sessions)
-                _SessionTile(session: s, useLb: state.useLb),
+              // Workouts and rest days together, newest first.
+              for (final (session, restDay) in _historyEntries(state))
+                if (session != null)
+                  _SessionTile(session: session, useLb: state.useLb)
+                else
+                  _RestDayTile(dayKey: restDay!),
           ],
         );
       },
     );
   }
+}
+
+/// Workouts and rest days as one list, newest first: `(session, null)` or
+/// `(null, dayKey)`. A rest day on a day you also trained is left out, since
+/// the workout says more.
+List<(WorkoutSession?, String?)> _historyEntries(GymState state) {
+  final trained = {
+    for (final s in state.sessions) GymCubit.dayKey(s.startedAt),
+  };
+  final entries = <(DateTime, (WorkoutSession?, String?))>[
+    for (final s in state.sessions) (s.startedAt, (s, null)),
+    for (final day in state.restDays)
+      if (!trained.contains(day))
+        (DateTime.parse(day).add(const Duration(hours: 12)), (null, day)),
+  ]..sort((a, b) => b.$1.compareTo(a.$1));
+  return [for (final e in entries) e.$2];
 }
 
 Future<void> _reorderWorkouts(
@@ -421,4 +443,107 @@ class _WeekCard extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// Log today as a rest day, or another day with the date picker.
+class _RestDayCard extends StatelessWidget {
+  final Set<String> restDays;
+  const _RestDayCard({required this.restDays});
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<GymCubit>();
+    final today = DateTime.now();
+    final isRest = restDays.contains(GymCubit.dayKey(today));
+    return AppCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Dimens.spacing16,
+        vertical: Dimens.spacing4,
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.self_improvement_rounded),
+          const SizedBox(width: Dimens.spacing12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Rest day today',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                GestureDetector(
+                  onTap: () => _pickOtherDay(context, cubit),
+                  child: Text(
+                    'Log a different day',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: isRest,
+            onChanged: (value) => cubit.setRestDay(today, value),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickOtherDay(BuildContext context, GymCubit cubit) async {
+    final day = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+      helpText: 'Rest day',
+    );
+    if (day != null) await cubit.setRestDay(day, true);
+  }
+}
+
+class _RestDayTile extends StatelessWidget {
+  final String dayKey;
+  const _RestDayTile({required this.dayKey});
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Dimens.spacing8),
+      child: AppCard(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Dimens.spacing16,
+          vertical: Dimens.spacing4,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.self_improvement_rounded,
+              size: 20,
+              color: mutedColor(context),
+            ),
+            const SizedBox(width: Dimens.spacing12),
+            Expanded(child: Text('Rest day', style: text.titleSmall)),
+            Text(
+              dateText(DateTime.parse(dayKey)),
+              style: text.bodySmall?.copyWith(color: mutedColor(context)),
+            ),
+            IconButton(
+              tooltip: 'Remove rest day',
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.close_rounded, size: 18),
+              onPressed: () => context.read<GymCubit>().setRestDay(
+                DateTime.parse(dayKey),
+                false,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

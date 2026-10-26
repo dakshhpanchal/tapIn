@@ -67,6 +67,20 @@ class GymRepository {
 
   Future<void> clearActiveSession() => _metaBox.delete(_activeKey);
 
+  // Rest days ---------------------------------------------------------------
+
+  static const _restDaysKey = 'rest_days';
+
+  /// The days logged as rest days, as `yyyy-MM-dd`.
+  Set<String> getRestDays() {
+    final raw = _metaBox.get(_restDaysKey);
+    if (raw == null) return {};
+    return {for (final d in jsonDecode(raw) as List) d as String};
+  }
+
+  Future<void> saveRestDays(Set<String> days) =>
+      _metaBox.put(_restDaysKey, jsonEncode(days.toList()..sort()));
+
   // Routines --------------------------------------------------------------
 
   List<Routine> getRoutines() =>

@@ -13,6 +13,7 @@ import 'package:opennutritracker/features/gym/domain/gym_transfer.dart';
 import 'package:opennutritracker/features/gym/presentation/active_workout_screen.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_page.dart';
 import 'package:opennutritracker/features/gym/presentation/session_detail_screen.dart';
+import 'package:opennutritracker/features/gym/presentation/today_workout_row.dart';
 import 'package:opennutritracker/features/gym/presentation/session_edit_screen.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_cubit.dart';
 
@@ -623,4 +624,90 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+
+  testWidgets('Home shows what kind of day today is, above the meals', (
+    tester,
+  ) async {
+    await cubit.discardWorkout();
+    await tester.pumpWidget(
+      app(
+        home: Scaffold(body: TodayWorkoutRow(cubit: cubit)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Nothing yet: a nudge with a one-tap rest day.
+    expect(find.text('No workout yet'), findsOneWidget);
+    await tester.tap(find.text('Rest day'));
+    await tester.pumpAndSettle();
+    expect(find.text('Rest day'), findsOneWidget);
+    expect(find.text('No workout yet'), findsNothing);
+    expect(cubit.state.restDays, contains(GymCubit.dayKey(DateTime.now())));
+
+    // Undo.
+    await tester.tap(find.byTooltip('Not a rest day'));
+    await tester.pumpAndSettle();
+    expect(find.text('No workout yet'), findsOneWidget);
+    expect(cubit.state.restDays, isEmpty);
+
+    // A workout in progress shows its name.
+    await cubit.startFromRoutine(
+      Routine(
+        id: 'u',
+        name: 'Upper',
+        exercises: [WorkoutExercise.of(cubit.state.exercises.first)],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Upper'), findsOneWidget);
+    expect(find.text('In progress'), findsOneWidget);
+
+    // Finished, it still shows the name, and a rest day mark no longer wins.
+    await cubit.updateSet(
+      0,
+      0,
+      (s) => s.copyWith(weightKg: 40, reps: 8, done: true),
+    );
+    await cubit.finishWorkout();
+    await cubit.setRestDay(DateTime.now(), true);
+    await tester.pumpAndSettle();
+    expect(find.text('Upper'), findsOneWidget);
+    expect(find.text('In progress'), findsNothing);
+    expect(find.text('Rest day'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('the Gym tab logs rest days and lists them in the history', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360 * 3, 1200 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await cubit.discardWorkout();
+    await tester.pumpWidget(app(home: const Scaffold(body: GymPage())));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Rest day today'), findsOneWidget);
+    await tester.tap(find.byType(Switch));
+    await tester.pumpAndSettle();
+    final today = GymCubit.dayKey(DateTime.now());
+    expect(cubit.state.restDays, contains(today));
+    // It shows up in the history as its own row.
+    expect(find.text('Rest day'), findsOneWidget);
+
+    // An older rest day is listed too, and can be removed from there.
+    await cubit.setRestDay(DateTime(2026, 1, 5), true);
+    await tester.pumpAndSettle();
+    expect(find.text('Rest day'), findsNWidgets(2));
+    await tester.tap(find.byTooltip('Remove rest day').last);
+    await tester.pumpAndSettle();
+    expect(cubit.state.restDays, {today});
+
+    // Switching today off removes it.
+    await tester.tap(find.byType(Switch));
+    await tester.pumpAndSettle();
+    expect(cubit.state.restDays, isEmpty);
+    expect(find.text('Rest day'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
 }

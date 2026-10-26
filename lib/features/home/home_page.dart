@@ -27,6 +27,7 @@ import 'package:opennutritracker/features/home/presentation/bloc/home_bloc.dart'
 import 'package:opennutritracker/features/home/presentation/widgets/dashboard_widget.dart';
 import 'package:opennutritracker/features/home/presentation/widgets/intake_vertical_list.dart';
 import 'package:opennutritracker/features/home/presentation/widgets/fasting_home_chip.dart';
+import 'package:opennutritracker/features/gym/presentation/today_workout_row.dart';
 import 'package:opennutritracker/features/home/presentation/widgets/quick_water_widget.dart';
 import 'package:opennutritracker/core/domain/entity/body_weight_unit_entity.dart';
 import 'package:opennutritracker/features/home/presentation/widgets/quick_weight_widget.dart';
@@ -247,6 +248,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 onItemTappedCallback: onActivityItemTapped,
                 onItemDragCallback: onActivityItemDrag,
               ),
+            // Today's workout (Upper, Lower...) or rest day, above the meals.
+            const TodayWorkoutRow(),
             // #150 follow-up: a 0% share (e.g. OMAD sets snack to 0) hides an
             // empty section so the home view doesn't carry a header the user
             // explicitly opted out of. A section that holds intakes always

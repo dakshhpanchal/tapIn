@@ -16,6 +16,9 @@ class GymState extends Equatable {
   final WorkoutSession? active;
   final bool useLb;
 
+  /// Days logged as rest days, as `yyyy-MM-dd` (see [dayKey]).
+  final Set<String> restDays;
+
   const GymState({
     this.loaded = false,
     this.sessions = const [],
@@ -23,6 +26,7 @@ class GymState extends Equatable {
     this.exercises = const [],
     this.active,
     this.useLb = false,
+    this.restDays = const {},
   });
 
   GymState copyWith({
@@ -33,6 +37,7 @@ class GymState extends Equatable {
     WorkoutSession? active,
     bool clearActive = false,
     bool? useLb,
+    Set<String>? restDays,
   }) => GymState(
     loaded: loaded ?? this.loaded,
     sessions: sessions ?? this.sessions,
@@ -40,6 +45,7 @@ class GymState extends Equatable {
     exercises: exercises ?? this.exercises,
     active: clearActive ? null : (active ?? this.active),
     useLb: useLb ?? this.useLb,
+    restDays: restDays ?? this.restDays,
   );
 
   @override
@@ -50,6 +56,7 @@ class GymState extends Equatable {
     exercises,
     active,
     useLb,
+    restDays,
   ];
 }
 
@@ -81,6 +88,7 @@ class GymCubit extends Cubit<GymState> {
         exercises: exercises,
         active: _repo.getActiveSession(),
         useLb: config.bodyWeightUnit == BodyWeightUnit.lb,
+        restDays: _repo.getRestDays(),
       ),
     );
   }
@@ -273,6 +281,22 @@ class GymCubit extends Cubit<GymState> {
     emit(state.copyWith(clearActive: true));
   }
 
+  // Rest days ---------------------------------------------------------------
+
+  /// The key a calendar day is stored under: `2026-10-27`.
+  static String dayKey(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
+  /// Logs [day] as a rest day, or takes the mark off again.
+  Future<void> setRestDay(DateTime day, bool rest) async {
+    final days = {...state.restDays};
+    rest ? days.add(dayKey(day)) : days.remove(dayKey(day));
+    await _repo.saveRestDays(days);
+    emit(state.copyWith(restDays: days));
+  }
+
   // History, routines and exercises -------------------------------------------
 
   /// Saves a corrected finished workout in place of the one with the same id.
@@ -380,6 +404,7 @@ class GymCubit extends Cubit<GymState> {
     exercises: state.exercises,
     routines: state.routines,
     sessions: state.sessions,
+    restDays: state.restDays,
   );
 
   /// Merges an import file into what is stored. Throws [GymImportException]
@@ -401,11 +426,14 @@ class GymCubit extends Cubit<GymState> {
     for (final s in plan.sessions) {
       await _repo.saveSession(s);
     }
+    final restDays = {...state.restDays, ...plan.restDays};
+    if (plan.restDays.isNotEmpty) await _repo.saveRestDays(restDays);
     emit(
       state.copyWith(
         exercises: await _repo.getExercises(),
         routines: _repo.getRoutines(),
         sessions: _repo.getSessions(),
+        restDays: restDays,
       ),
     );
     return plan;

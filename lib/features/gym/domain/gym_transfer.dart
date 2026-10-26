@@ -55,6 +55,9 @@ class GymImportPlan {
   final int sessionsSkipped;
   final List<String> warnings;
 
+  /// Rest days in the file, as `yyyy-MM-dd`.
+  final List<String> restDays;
+
   const GymImportPlan({
     required this.newExercises,
     this.updatedExercises = const [],
@@ -63,14 +66,19 @@ class GymImportPlan {
     required this.sessions,
     required this.sessionsSkipped,
     required this.warnings,
+    this.restDays = const [],
   });
 
   bool get isEmpty =>
       newExercises.isEmpty &&
       updatedExercises.isEmpty &&
       workouts.isEmpty &&
-      sessions.isEmpty;
+      sessions.isEmpty &&
+      restDays.isEmpty;
 }
+
+String _dayKey(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
 String _norm(String s) =>
     s.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
@@ -96,6 +104,7 @@ String exportGymJson({
   required List<Exercise> exercises,
   required List<Routine> routines,
   required List<WorkoutSession> sessions,
+  Iterable<String> restDays = const [],
 }) {
   Object plannedSets(List<SetEntry> sets) =>
       sets.every((s) => s.weightKg == 0 && s.reps == 0)
@@ -127,6 +136,7 @@ String exportGymJson({
           ],
         },
     ],
+    if (restDays.isNotEmpty) 'restDays': restDays.toList()..sort(),
     'history': [
       for (final s in sessions.where((s) => s.isFinished))
         {
@@ -395,7 +405,21 @@ GymImportPlan parseGymImport(
     );
   }
 
+  // Rest days: dates only; anything that isn't a real date is ignored.
+  final rest = <String>[];
+  for (final d in listOf('restDays')) {
+    final date = d is String ? DateTime.tryParse(d) : null;
+    if (date == null) {
+      warnings.add(
+        'A rest day that is not a date (like 2026-10-20) was skipped.',
+      );
+      continue;
+    }
+    rest.add(_dayKey(date));
+  }
+
   return GymImportPlan(
+    restDays: rest,
     newExercises: created,
     updatedExercises: [
       for (final e in changed.values)
