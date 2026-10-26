@@ -41,6 +41,41 @@ class SearchProductsUseCase {
   final RecipeDataSource _recipeDataSource;
   final GetConfigUsecase _getConfigUsecase;
 
+  // Remote pages already fetched this session, by source and query. Typing a
+  // query again (backspacing, retyping, coming back to the screen) is then
+  // answered from memory instead of the network. Only successful answers are
+  // kept, and they expire so a stale page doesn't outlive its welcome.
+  static const _remoteCacheTtl = Duration(minutes: 10);
+  static const _remoteCacheMax = 60;
+  final Map<String, ({DateTime at, List<MealEntity> meals})> _remoteCache = {};
+
+  Future<({List<MealEntity> meals, bool failed})> _cachedRemote(
+    String key,
+    Future<List<MealEntity>> Function() call,
+    String sourceLabel,
+  ) async {
+    final hit = _remoteCache[key];
+    if (hit != null && DateTime.now().difference(hit.at) < _remoteCacheTtl) {
+      // Re-insert so the most recently used key is last.
+      _remoteCache
+        ..remove(key)
+        ..[key] = hit;
+      return (meals: hit.meals, failed: false);
+    }
+    final fresh = await _safeRemoteCall(sourceLabel, call);
+    if (!fresh.failed) {
+      _remoteCache[key] = (at: DateTime.now(), meals: fresh.meals);
+      while (_remoteCache.length > _remoteCacheMax) {
+        _remoteCache.remove(_remoteCache.keys.first);
+      }
+    }
+    return fresh;
+  }
+
+  /// Forget remembered remote pages, e.g. after the food-source selection
+  /// changes.
+  void clearSearchCache() => _remoteCache.clear();
+
   SearchProductsUseCase(
     this._productsRepository,
     this._getIntakeUsecase,
@@ -61,9 +96,10 @@ class SearchProductsUseCase {
       return _buildResult(searchString, const [],
           remoteSkipped: true, cacheSource: MealSourceEntity.off);
     }
-    final remote = await _safeRemoteCall(
-      'OFF',
+    final remote = await _cachedRemote(
+      'OFF|${searchString.trim().toLowerCase()}',
       () => _productsRepository.getOFFProductsByString(searchString),
+      'OFF',
     );
     // Cache the result page. Untouched entries age out after 90 days
     // (RemoteSearchCacheDataSource.pruneStale), so this can't grow
@@ -96,13 +132,23 @@ class SearchProductsUseCase {
       return _buildResult(searchString, const [],
           remoteSkipped: true, cacheSource: MealSourceEntity.fdc);
     }
-    final remote = await _safeRemoteCall(
-      'FDC',
-      () => _productsRepository.getSupabaseFoodsByString(
-        searchString,
-        forResolution: forResolution,
-      ),
-    );
+    final config = await _getConfigUsecase.getConfig();
+    final enabledSources = config.foodSourceToggles.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    Future<List<MealEntity>> fetch() =>
+        _productsRepository.getSupabaseFoodsByString(
+          searchString,
+          forResolution: forResolution,
+        );
+    // The resolver scores whatever this returns and auto-selects from it, so
+    // it always asks the source; remembering pages is for typing in the UI.
+    final remote = forResolution
+        ? await _safeRemoteCall('FDC', fetch)
+        : await _cachedRemote(
+            'FDC|${searchString.trim().toLowerCase()}|$enabledSources',
+            fetch,
+            'FDC',
+          );
     await _cacheRemoteResults(remote.meals);
     return _buildResult(searchString, remote.meals,
         remoteFailed: remote.failed, cacheSource: MealSourceEntity.fdc);

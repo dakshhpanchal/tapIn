@@ -14,8 +14,12 @@ Iterable<SetEntry> workingSets(WorkoutExercise e) =>
     e.sets.where((s) => s.done && !s.warmup && s.reps > 0);
 
 /// Total weight moved (weight × reps) by the finished working sets.
-double exerciseVolume(WorkoutExercise e) =>
-    workingSets(e).fold(0.0, (sum, s) => sum + s.weightKg * s.reps);
+///
+/// Zero for plate-based exercises: a plate count times reps is not a weight,
+/// and adding it to kilograms would make the total meaningless.
+double exerciseVolume(WorkoutExercise e) => e.plates
+    ? 0
+    : workingSets(e).fold(0.0, (sum, s) => sum + s.weightKg * s.reps);
 
 double sessionVolume(WorkoutSession s) =>
     s.exercises.fold(0.0, (sum, e) => sum + exerciseVolume(e));
@@ -27,11 +31,12 @@ int sessionSetCount(WorkoutSession s) =>
 double bestWeight(WorkoutExercise e) =>
     workingSets(e).fold(0.0, (m, s) => s.weightKg > m ? s.weightKg : m);
 
-double bestOneRepMax(WorkoutExercise e) => workingSets(
-  e,
-).fold(0.0, (m, s) => estimateOneRepMax(s.weightKg, s.reps) > m
-    ? estimateOneRepMax(s.weightKg, s.reps)
-    : m);
+double bestOneRepMax(WorkoutExercise e) => workingSets(e).fold(
+  0.0,
+  (m, s) => estimateOneRepMax(s.weightKg, s.reps) > m
+      ? estimateOneRepMax(s.weightKg, s.reps)
+      : m,
+);
 
 /// One point on an exercise's progress chart: how that exercise went in one
 /// finished session.
@@ -137,5 +142,7 @@ String formatWeight(double value) {
   final rounded = (value * 100).round() / 100;
   return rounded == rounded.roundToDouble()
       ? rounded.toStringAsFixed(0)
-      : rounded.toStringAsFixed(rounded * 10 == (rounded * 10).roundToDouble() ? 1 : 2);
+      : rounded.toStringAsFixed(
+          rounded * 10 == (rounded * 10).roundToDouble() ? 1 : 2,
+        );
 }

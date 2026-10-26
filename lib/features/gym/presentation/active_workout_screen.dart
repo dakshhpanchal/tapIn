@@ -8,11 +8,15 @@ import 'package:opennutritracker/core/styles/dimens.dart';
 import 'package:opennutritracker/features/gym/domain/gym_calc.dart';
 import 'package:opennutritracker/features/gym/domain/gym_models.dart';
 import 'package:opennutritracker/features/gym/presentation/exercise_picker_screen.dart';
+import 'package:opennutritracker/features/gym/presentation/exercise_progress_screen.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_cubit.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_format.dart';
+import 'package:opennutritracker/features/gym/presentation/reorder_sheet.dart';
 import 'package:opennutritracker/features/gym/presentation/workout_summary_screen.dart';
 
-/// Logging a workout: exercises, sets with weight and reps, a rest timer.
+/// Logging a workout: exercises, sets with weight and reps, what you did last
+/// time, a machine setting and a note for next time, and a clock for how long
+/// the workout has run.
 /// Every change is saved immediately by [GymCubit].
 class ActiveWorkoutScreen extends StatefulWidget {
   const ActiveWorkoutScreen({super.key});
@@ -22,37 +26,22 @@ class ActiveWorkoutScreen extends StatefulWidget {
 }
 
 class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
-  static const _defaultRest = 90;
-
-  Timer? _ticker;
-  int _restRemaining = 0;
-  int _restTotal = _defaultRest;
+  Timer? _clock;
 
   @override
   void initState() {
     super.initState();
-    // One tick a second drives both the elapsed clock and the rest countdown.
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() {
-        if (_restRemaining > 0) {
-          _restRemaining--;
-          if (_restRemaining == 0) HapticFeedback.heavyImpact();
-        }
-      });
+    // Redraws once a second so the elapsed time keeps running.
+    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
     });
   }
 
   @override
   void dispose() {
-    _ticker?.cancel();
+    _clock?.cancel();
     super.dispose();
   }
-
-  void _startRest() => setState(() {
-    _restTotal = _defaultRest;
-    _restRemaining = _defaultRest;
-  });
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +67,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                   children: [
                     Text(session.name, overflow: TextOverflow.ellipsis),
                     Text(
-                      formatClock(session.duration),
+                      'Started ${timeText(session.startedAt)} · '
+                      '${formatClock(session.duration)}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: mutedColor(context),
                       ),
@@ -90,9 +80,15 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 PopupMenuButton<String>(
                   onSelected: (v) {
                     if (v == 'discard') _discard(context, cubit);
+                    if (v == 'reorder') _reorder(context, cubit, session);
                   },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(
+                  itemBuilder: (_) => [
+                    if (session.exercises.length > 1)
+                      const PopupMenuItem(
+                        value: 'reorder',
+                        child: Text('Reorder exercises'),
+                      ),
+                    const PopupMenuItem(
                       value: 'discard',
                       child: Text('Discard workout'),
                     ),
@@ -114,7 +110,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               children: [
                 for (var i = 0; i < session.exercises.length; i++)
                   _ExerciseCard(
-                    key: ValueKey('${session.id}-$i-${session.exercises[i].exerciseId}'),
+                    key: ValueKey(
+                      '${session.id}-$i-${session.exercises[i].exerciseId}',
+                    ),
                     index: i,
                     exercise: session.exercises[i],
                     previous: lastPerformance(
@@ -122,7 +120,6 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       session.exercises[i].exerciseId,
                     ),
                     useLb: state.useLb,
-                    onSetDone: _startRest,
                   ),
                 const SizedBox(height: Dimens.spacing8),
                 OutlinedButton.icon(
@@ -132,19 +129,6 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                 ),
               ],
             ),
-            bottomSheet: _restRemaining > 0
-                ? _RestBar(
-                    remaining: _restRemaining,
-                    total: _restTotal,
-                    onAdjust: (delta) => setState(() {
-                      _restRemaining = (_restRemaining + delta).clamp(0, 600);
-                      if (delta > 0 && _restRemaining > _restTotal) {
-                        _restTotal = _restRemaining;
-                      }
-                    }),
-                    onSkip: () => setState(() => _restRemaining = 0),
-                  )
-                : null,
           ),
         );
       },
@@ -189,6 +173,19 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     if (name != null && name.isNotEmpty) await cubit.renameWorkout(name);
   }
 
+  Future<void> _reorder(
+    BuildContext context,
+    GymCubit cubit,
+    WorkoutSession session,
+  ) async {
+    final order = await showReorderSheet(
+      context,
+      title: 'Reorder exercises',
+      items: [for (final e in session.exercises) e.name],
+    );
+    if (order != null) await cubit.reorderExercises(order);
+  }
+
   Future<void> _discard(BuildContext context, GymCubit cubit) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -215,11 +212,13 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     GymCubit cubit,
     WorkoutSession session,
   ) async {
-    final pending = session.exercises.fold<int>(
+    // Skipped exercises don't count: they are left out on purpose.
+    final active = session.exercises.where((e) => !e.skipped);
+    final pending = active.fold<int>(
       0,
       (n, e) => n + e.sets.where((s) => !s.done).length,
     );
-    final anyDone = session.exercises.any((e) => e.sets.any((s) => s.done));
+    final anyDone = active.any((e) => e.sets.any((s) => s.done));
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -257,88 +256,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   }
 }
 
-class _RestBar extends StatelessWidget {
-  final int remaining;
-  final int total;
-  final void Function(int delta) onAdjust;
-  final VoidCallback onSkip;
-
-  const _RestBar({
-    required this.remaining,
-    required this.total,
-    required this.onAdjust,
-    required this.onSkip,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: scheme.secondaryContainer,
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: Dimens.spacing16,
-            vertical: Dimens.spacing8,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Rest ${formatClock(Duration(seconds: remaining))}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: scheme.onSecondaryContainer,
-                      ),
-                    ),
-                  ),
-                  TextButton(
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                    ),
-                    onPressed: () => onAdjust(-15),
-                    child: const Text('−15'),
-                  ),
-                  TextButton(
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                    ),
-                    onPressed: () => onAdjust(15),
-                    child: const Text('+15'),
-                  ),
-                  IconButton.filledTonal(
-                    tooltip: 'Skip rest',
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(Icons.skip_next_rounded),
-                    onPressed: onSkip,
-                  ),
-                ],
-              ),
-              LinearProgressIndicator(
-                value: total == 0 ? 0 : remaining / total,
-                minHeight: 4,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _ExerciseCard extends StatelessWidget {
   final int index;
   final WorkoutExercise exercise;
   final WorkoutExercise? previous;
   final bool useLb;
-  final VoidCallback onSetDone;
 
   const _ExerciseCard({
     super.key,
@@ -346,19 +268,53 @@ class _ExerciseCard extends StatelessWidget {
     required this.exercise,
     required this.previous,
     required this.useLb,
-    required this.onSetDone,
   });
 
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<GymCubit>();
     final text = Theme.of(context).textTheme;
-    final unit = weightUnitLabel(useLb);
-    final last = previous == null
-        ? null
-        : workingSets(previous!)
-              .map((s) => '${weightText(s.weightKg, useLb)}×${s.reps}')
-              .join('  ');
+    final unit = unitFor(plates: exercise.plates, useLb: useLb);
+    if (exercise.skipped) {
+      // Collapsed while skipped, with a way back.
+      return Padding(
+        padding: const EdgeInsets.only(bottom: Dimens.spacing12),
+        child: AppCard(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Dimens.spacing16,
+            vertical: Dimens.spacing8,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      exercise.name,
+                      style: text.titleSmall?.copyWith(
+                        color: mutedColor(context),
+                        decoration: TextDecoration.lineThrough,
+                      ),
+                    ),
+                    Text(
+                      'Skipped today',
+                      style: text.bodySmall?.copyWith(
+                        color: mutedColor(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: () => cubit.setExerciseSkipped(index, false),
+                child: const Text('Bring back'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.only(bottom: Dimens.spacing12),
       child: AppCard(
@@ -372,7 +328,33 @@ class _ExerciseCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(exercise.name, style: text.titleMedium),
+                      InkWell(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => ExerciseProgressScreen(
+                              exerciseId: exercise.exerciseId,
+                              name: exercise.name,
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                exercise.name,
+                                style: text.titleMedium,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.show_chart_rounded,
+                              size: 18,
+                              color: mutedColor(context),
+                            ),
+                          ],
+                        ),
+                      ),
                       Text(
                         exercise.muscle.label,
                         style: text.bodySmall?.copyWith(
@@ -382,26 +364,49 @@ class _ExerciseCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Remove exercise',
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  onPressed: () => cubit.removeExercise(index),
+                PopupMenuButton<String>(
+                  tooltip: 'Exercise options',
+                  onSelected: (v) => v == 'skip'
+                      ? cubit.setExerciseSkipped(index, true)
+                      : cubit.removeExercise(index),
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'skip', child: Text('Skip today')),
+                    PopupMenuItem(
+                      value: 'remove',
+                      child: Text('Remove from workout'),
+                    ),
+                  ],
                 ),
               ],
             ),
-            if (last != null && last.isNotEmpty)
+            if (previous != null && previous!.note.trim().isNotEmpty)
               Padding(
-                padding: const EdgeInsets.only(top: Dimens.spacing4),
-                child: Text(
-                  'Last time: $last',
-                  style: text.bodySmall?.copyWith(color: mutedColor(context)),
+                padding: const EdgeInsets.only(top: Dimens.spacing8),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(Dimens.spacing8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.tertiaryContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Note from last time: ${previous!.note.trim()}',
+                    style: text.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onTertiaryContainer,
+                    ),
+                  ),
                 ),
               ),
             const SizedBox(height: Dimens.spacing12),
             Row(
               children: [
                 const SizedBox(width: 36, child: Text('Set')),
+                const Expanded(
+                  flex: 3,
+                  child: Center(child: Text('Last time')),
+                ),
                 Expanded(
+                  flex: 2,
                   child: Center(
                     child: Text(
                       exercise.kind == ExerciseKind.bodyweight
@@ -410,7 +415,7 @@ class _ExerciseCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                const Expanded(child: Center(child: Text('Reps'))),
+                const Expanded(flex: 2, child: Center(child: Text('Reps'))),
                 const SizedBox(width: 48),
               ],
             ),
@@ -418,16 +423,13 @@ class _ExerciseCard extends StatelessWidget {
               _SetRow(
                 key: ValueKey('${exercise.exerciseId}-$s'),
                 number: _workingNumber(s),
+                previous: _previousFor(s),
                 set: exercise.sets[s],
                 useLb: useLb,
+                plates: exercise.plates,
                 onChanged: (next) => cubit.updateSet(index, s, (_) => next),
                 onDone: (done) {
-                  cubit.updateSet(
-                    index,
-                    s,
-                    (set) => set.copyWith(done: done),
-                  );
-                  if (done) onSetDone();
+                  cubit.updateSet(index, s, (set) => set.copyWith(done: done));
                 },
                 onToggleWarmup: () => cubit.updateSet(
                   index,
@@ -442,10 +444,43 @@ class _ExerciseCard extends StatelessWidget {
               label: const Text('Add set'),
               onPressed: () => cubit.addSet(index),
             ),
+            const SizedBox(height: Dimens.spacing8),
+            _LineField(
+              key: ValueKey('setting-${exercise.exerciseId}-$index'),
+              label: 'Machine setting',
+              initial: exercise.setting,
+              icon: Icons.tune_rounded,
+              onChanged: (v) => cubit.setExerciseSetting(index, v),
+            ),
+            const SizedBox(height: Dimens.spacing8),
+            _LineField(
+              key: ValueKey('note-${exercise.exerciseId}-$index'),
+              label: 'Note for next time',
+              initial: exercise.note,
+              icon: Icons.sticky_note_2_outlined,
+              onChanged: (v) => cubit.setExerciseNote(index, v),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  /// What the same working set was last time, e.g. "60 kg × 8"; null for
+  /// warm-ups and sets beyond what was done before.
+  String? _previousFor(int s) {
+    final before = previous;
+    if (before == null || exercise.sets[s].warmup) return null;
+    var n = 0;
+    for (var i = 0; i <= s; i++) {
+      if (!exercise.sets[i].warmup) n++;
+    }
+    final done = workingSets(before).toList();
+    if (n > done.length) return null;
+    final set = done[n - 1];
+    return '${weightShown(set.weightKg, plates: exercise.plates, useLb: useLb)} '
+        '${unitFor(plates: exercise.plates, useLb: useLb)}'
+        ' × ${set.reps}';
   }
 
   /// Working sets are numbered 1, 2, 3...; warm-ups show "W".
@@ -461,8 +496,10 @@ class _ExerciseCard extends StatelessWidget {
 
 class _SetRow extends StatefulWidget {
   final String number;
+  final String? previous;
   final SetEntry set;
   final bool useLb;
+  final bool plates;
   final ValueChanged<SetEntry> onChanged;
   final ValueChanged<bool> onDone;
   final VoidCallback onToggleWarmup;
@@ -471,8 +508,10 @@ class _SetRow extends StatefulWidget {
   const _SetRow({
     super.key,
     required this.number,
+    required this.previous,
     required this.set,
     required this.useLb,
+    required this.plates,
     required this.onChanged,
     required this.onDone,
     required this.onToggleWarmup,
@@ -494,8 +533,9 @@ class _SetRowState extends State<_SetRow> {
     _reps = TextEditingController(text: _repsText(widget.set));
   }
 
-  String _weightText(SetEntry s) =>
-      s.weightKg == 0 ? '' : weightText(s.weightKg, widget.useLb);
+  String _weightText(SetEntry s) => s.weightKg == 0
+      ? ''
+      : weightShown(s.weightKg, plates: widget.plates, useLb: widget.useLb);
   String _repsText(SetEntry s) => s.reps == 0 ? '' : '${s.reps}';
 
   @override
@@ -527,7 +567,7 @@ class _SetRowState extends State<_SetRow> {
     final r = int.tryParse(_reps.text) ?? 0;
     widget.onChanged(
       widget.set.copyWith(
-        weightKg: fromDisplayWeight(w, widget.useLb),
+        weightKg: weightStored(w, plates: widget.plates, useLb: widget.useLb),
         reps: r,
       ),
     );
@@ -570,8 +610,20 @@ class _SetRowState extends State<_SetRow> {
               ),
             ),
           ),
-          Expanded(child: _field(_weight, decimal: true)),
-          Expanded(child: _field(_reps, decimal: false)),
+          Expanded(
+            flex: 3,
+            child: Text(
+              widget.previous ?? '–',
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: mutedColor(context)),
+            ),
+          ),
+          Expanded(flex: 2, child: _field(_weight, decimal: true)),
+          Expanded(flex: 2, child: _field(_reps, decimal: false)),
           SizedBox(
             width: 48,
             child: Checkbox(
@@ -602,4 +654,54 @@ class _SetRowState extends State<_SetRow> {
       ),
     ),
   );
+}
+
+/// A one-line text box that saves as you type. Its text is only read when it
+/// is built, so edits elsewhere never overwrite what is being typed.
+class _LineField extends StatefulWidget {
+  final String label;
+  final String initial;
+  final IconData icon;
+  final ValueChanged<String> onChanged;
+
+  const _LineField({
+    super.key,
+    required this.label,
+    required this.initial,
+    required this.icon,
+    required this.onChanged,
+  });
+
+  @override
+  State<_LineField> createState() => _LineFieldState();
+}
+
+class _LineFieldState extends State<_LineField> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initial);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      textCapitalization: TextCapitalization.sentences,
+      onChanged: widget.onChanged,
+      decoration: InputDecoration(
+        isDense: true,
+        labelText: widget.label,
+        prefixIcon: Icon(widget.icon, size: 20),
+      ),
+    );
+  }
 }

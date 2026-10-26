@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:hive_ce_flutter/hive_flutter.dart';
-import 'package:opennutritracker/features/gym/data/exercise_seed.dart';
 import 'package:opennutritracker/features/gym/domain/gym_models.dart';
 
 /// Reads and writes gym data. Everything is stored as JSON strings in
@@ -24,31 +23,25 @@ class GymRepository {
 
   // Exercises -----------------------------------------------------------
 
-  /// All exercises, seeding the built-in library on first use. Built-ins that
-  /// the user hasn't seen yet (a newer library) are added without touching
-  /// existing ones.
+  /// The user's exercises, A to Z. There is no built-in list: the user adds
+  /// their own. An earlier build seeded a library with `seed_` ids; those are
+  /// removed here so it doesn't linger (logged workouts keep their own copy of
+  /// the exercise name, so history is unaffected).
   Future<List<Exercise>> getExercises() async {
-    final seeds = buildSeedExercises();
-    final missing = {
-      for (final e in seeds)
-        if (!_exerciseBox.containsKey(e.id)) e.id: _encode(e.toJson()),
-    };
-    if (missing.isNotEmpty) await _exerciseBox.putAll(missing);
-    final all = [
+    final seeded = _exerciseBox.keys
+        .where((k) => k is String && k.startsWith('seed_'))
+        .toList();
+    if (seeded.isNotEmpty) await _exerciseBox.deleteAll(seeded);
+    return [
       for (final raw in _exerciseBox.values) Exercise.fromJson(_decode(raw)),
     ]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    return all;
   }
 
   Future<void> saveExercise(Exercise e) =>
       _exerciseBox.put(e.id, _encode(e.toJson()));
 
-  /// Only custom exercises can be deleted; logged history keeps its name.
-  Future<void> deleteExercise(String id) async {
-    final raw = _exerciseBox.get(id);
-    if (raw == null || !Exercise.fromJson(_decode(raw)).isCustom) return;
-    await _exerciseBox.delete(id);
-  }
+  /// Logged workouts keep their own copy of the name, so history survives.
+  Future<void> deleteExercise(String id) => _exerciseBox.delete(id);
 
   // Sessions ------------------------------------------------------------
 
@@ -77,9 +70,12 @@ class GymRepository {
   // Routines --------------------------------------------------------------
 
   List<Routine> getRoutines() =>
-      [for (final raw in _routineBox.values) Routine.decode(raw)]..sort(
-        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-      );
+      [for (final raw in _routineBox.values) Routine.decode(raw)]..sort((a, b) {
+        final byOrder = a.order.compareTo(b.order);
+        return byOrder != 0
+            ? byOrder
+            : a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
 
   Future<void> saveRoutine(Routine r) => _routineBox.put(r.id, r.encode());
 
@@ -94,5 +90,6 @@ class GymRepository {
   }
 
   static String _encode(Map<String, dynamic> json) => jsonEncode(json);
-  static Map<String, dynamic> _decode(String raw) => jsonDecode(raw) as Map<String, dynamic>;
+  static Map<String, dynamic> _decode(String raw) =>
+      jsonDecode(raw) as Map<String, dynamic>;
 }

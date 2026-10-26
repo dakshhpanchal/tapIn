@@ -4,23 +4,34 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:opennutritracker/core/presentation/widgets/app_card.dart';
 import 'package:opennutritracker/core/styles/dimens.dart';
 import 'package:opennutritracker/features/gym/domain/gym_calc.dart';
-import 'package:opennutritracker/features/gym/domain/gym_models.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_cubit.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_format.dart';
 
 /// Personal records and a progress chart for one exercise.
 class ExerciseProgressScreen extends StatelessWidget {
-  final Exercise exercise;
-  const ExerciseProgressScreen({super.key, required this.exercise});
+  final String exerciseId;
+  final String name;
+  const ExerciseProgressScreen({
+    super.key,
+    required this.exerciseId,
+    required this.name,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(exercise.name)),
+      appBar: AppBar(title: Text(name)),
       body: BlocBuilder<GymCubit, GymState>(
         builder: (context, state) {
-          final history = exerciseHistory(state.sessions, exercise.id);
+          final history = exerciseHistory(state.sessions, exerciseId);
           final useLb = state.useLb;
+          // Plate-based exercises are shown in plates, and have no 1RM or
+          // volume (those only mean something in kilograms).
+          final plates = state.sessions.any(
+            (s) =>
+                s.exercises.any((e) => e.exerciseId == exerciseId && e.plates),
+          );
+          final unit = unitFor(plates: plates, useLb: useLb);
           if (history.isEmpty) {
             return Center(
               child: Padding(
@@ -42,7 +53,9 @@ class ExerciseProgressScreen extends StatelessWidget {
             for (var i = 0; i < history.length; i++)
               FlSpot(
                 i.toDouble(),
-                toDisplayWeight(history[i].oneRepMaxKg, useLb),
+                plates
+                    ? history[i].bestWeightKg
+                    : toDisplayWeight(history[i].oneRepMaxKg, useLb),
               ),
           ];
           final maxY = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
@@ -58,20 +71,22 @@ class ExerciseProgressScreen extends StatelessWidget {
                     _stat(
                       context,
                       'Heaviest',
-                      '${weightText(maxOf((p) => p.bestWeightKg), useLb)} '
-                          '${weightUnitLabel(useLb)}',
+                      '${weightShown(maxOf((p) => p.bestWeightKg), plates: plates, useLb: useLb)} '
+                          '$unit',
                     ),
-                    _stat(
-                      context,
-                      'Est. 1RM',
-                      '${weightText(maxOf((p) => p.oneRepMaxKg), useLb)} '
-                          '${weightUnitLabel(useLb)}',
-                    ),
-                    _stat(
-                      context,
-                      'Best volume',
-                      volumeText(maxOf((p) => p.volumeKg), useLb),
-                    ),
+                    if (!plates) ...[
+                      _stat(
+                        context,
+                        'Est. 1RM',
+                        '${weightText(maxOf((p) => p.oneRepMaxKg), useLb)} '
+                            '$unit',
+                      ),
+                      _stat(
+                        context,
+                        'Best volume',
+                        volumeText(maxOf((p) => p.volumeKg), useLb),
+                      ),
+                    ],
                     _stat(context, 'Sessions', '${history.length}'),
                   ],
                 ),
@@ -83,7 +98,7 @@ class ExerciseProgressScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Estimated 1RM (${weightUnitLabel(useLb)})',
+                      plates ? 'Heaviest ($unit)' : 'Estimated 1RM ($unit)',
                       style: text.titleMedium,
                     ),
                     const SizedBox(height: Dimens.spacing16),
@@ -134,9 +149,9 @@ class ExerciseProgressScreen extends StatelessWidget {
                   contentPadding: EdgeInsets.zero,
                   title: Text(dateText(p.date)),
                   subtitle: Text(
-                    'Heaviest ${weightText(p.bestWeightKg, useLb)} '
-                    '${weightUnitLabel(useLb)} · volume '
-                    '${volumeText(p.volumeKg, useLb)}',
+                    'Heaviest ${weightShown(p.bestWeightKg, plates: plates, useLb: useLb)} '
+                    '$unit'
+                    '${plates ? '' : ' · volume ${volumeText(p.volumeKg, useLb)}'}',
                     style: TextStyle(color: mutedColor(context)),
                   ),
                 ),

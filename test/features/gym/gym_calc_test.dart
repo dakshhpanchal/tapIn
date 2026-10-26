@@ -73,10 +73,11 @@ void main() {
     ];
     expect(lastPerformance(sessions, 'bench')!.sets.first.weightKg, 65);
     expect(
-      lastPerformance(sessions, 'bench', excludeSessionId: 'new')!
-          .sets
-          .first
-          .weightKg,
+      lastPerformance(
+        sessions,
+        'bench',
+        excludeSessionId: 'new',
+      )!.sets.first.weightKg,
       60,
     );
     expect(lastPerformance(sessions, 'squat'), isNull);

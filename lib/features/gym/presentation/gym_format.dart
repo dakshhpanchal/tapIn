@@ -6,6 +6,25 @@ String weightUnitLabel(bool useLb) => useLb ? 'lb' : 'kg';
 
 double toDisplayWeight(double kg, bool useLb) => useLb ? kgToLb(kg) : kg;
 
+/// The unit label for an exercise: "plates" for machine plates, else kg/lb.
+String unitFor({required bool plates, required bool useLb}) =>
+    plates ? 'plates' : weightUnitLabel(useLb);
+
+/// [stored] as shown for an exercise: plate counts as they are, weights in
+/// the user's unit.
+String weightShown(
+  double stored, {
+  required bool plates,
+  required bool useLb,
+}) => plates ? formatWeight(stored) : weightText(stored, useLb);
+
+/// What the user typed back to the stored number (plates stay as typed).
+double weightStored(
+  double typed, {
+  required bool plates,
+  required bool useLb,
+}) => plates ? typed : fromDisplayWeight(typed, useLb);
+
 double fromDisplayWeight(double value, bool useLb) =>
     useLb ? lbToKg(value) : value;
 
@@ -38,9 +57,23 @@ String volumeText(double kg, bool useLb) {
   return '$buf ${weightUnitLabel(useLb)}';
 }
 
+/// "18:05".
+String timeText(DateTime d) =>
+    '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
 const _months = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 

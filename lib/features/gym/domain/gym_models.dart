@@ -45,6 +45,9 @@ class Exercise {
   final String equipment;
   final bool isCustom;
 
+  /// Weight is logged in machine plates (stack position), not kg or lb.
+  final bool plates;
+
   const Exercise({
     required this.id,
     required this.name,
@@ -52,6 +55,7 @@ class Exercise {
     this.kind = ExerciseKind.weighted,
     this.equipment = '',
     this.isCustom = false,
+    this.plates = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -61,6 +65,7 @@ class Exercise {
     'kind': kind.name,
     'equipment': equipment,
     'isCustom': isCustom,
+    'plates': plates,
   };
 
   factory Exercise.fromJson(Map<String, dynamic> json) => Exercise(
@@ -70,6 +75,7 @@ class Exercise {
     kind: ExerciseKind.fromName(json['kind'] as String?),
     equipment: (json['equipment'] as String?) ?? '',
     isCustom: (json['isCustom'] as bool?) ?? false,
+    plates: (json['plates'] as bool?) ?? false,
   );
 }
 
@@ -119,7 +125,20 @@ class WorkoutExercise {
   final MuscleGroup muscle;
   final ExerciseKind kind;
   final List<SetEntry> sets;
+
+  /// A note for next time, shown the next time this exercise comes up.
   final String note;
+
+  /// Free text for the machine or equipment setup (seat height, pin, grip).
+  final String setting;
+
+  /// Weights are machine plates; `SetEntry.weightKg` then holds the plate
+  /// count as is, with no kg/lb conversion.
+  final bool plates;
+
+  /// Skipped for today: kept in the workout so it can be brought back, but
+  /// left out when the workout is finished.
+  final bool skipped;
 
   const WorkoutExercise({
     required this.exerciseId,
@@ -128,6 +147,9 @@ class WorkoutExercise {
     this.kind = ExerciseKind.weighted,
     this.sets = const [],
     this.note = '',
+    this.setting = '',
+    this.plates = false,
+    this.skipped = false,
   });
 
   factory WorkoutExercise.of(Exercise e, {List<SetEntry> sets = const []}) =>
@@ -137,17 +159,26 @@ class WorkoutExercise {
         muscle: e.muscle,
         kind: e.kind,
         sets: sets,
+        plates: e.plates,
       );
 
-  WorkoutExercise copyWith({List<SetEntry>? sets, String? note}) =>
-      WorkoutExercise(
-        exerciseId: exerciseId,
-        name: name,
-        muscle: muscle,
-        kind: kind,
-        sets: sets ?? this.sets,
-        note: note ?? this.note,
-      );
+  WorkoutExercise copyWith({
+    List<SetEntry>? sets,
+    String? note,
+    String? setting,
+    bool? plates,
+    bool? skipped,
+  }) => WorkoutExercise(
+    exerciseId: exerciseId,
+    name: name,
+    muscle: muscle,
+    kind: kind,
+    sets: sets ?? this.sets,
+    note: note ?? this.note,
+    setting: setting ?? this.setting,
+    plates: plates ?? this.plates,
+    skipped: skipped ?? this.skipped,
+  );
 
   Map<String, dynamic> toJson() => {
     'exerciseId': exerciseId,
@@ -156,6 +187,9 @@ class WorkoutExercise {
     'kind': kind.name,
     'sets': [for (final s in sets) s.toJson()],
     'note': note,
+    'setting': setting,
+    'plates': plates,
+    if (skipped) 'skipped': true,
   };
 
   factory WorkoutExercise.fromJson(Map<String, dynamic> json) =>
@@ -169,6 +203,9 @@ class WorkoutExercise {
             SetEntry.fromJson(Map<String, dynamic>.from(s as Map)),
         ],
         note: (json['note'] as String?) ?? '',
+        setting: (json['setting'] as String?) ?? '',
+        plates: (json['plates'] as bool?) ?? false,
+        skipped: (json['skipped'] as bool?) ?? false,
       );
 }
 
@@ -241,16 +278,28 @@ class Routine {
   final String name;
   final List<WorkoutExercise> exercises;
 
+  /// Position in the "My workouts" list; the user can reorder it.
+  final int order;
+
   const Routine({
     required this.id,
     required this.name,
     this.exercises = const [],
+    this.order = 0,
   });
+
+  Routine copyWith({List<WorkoutExercise>? exercises, int? order}) => Routine(
+    id: id,
+    name: name,
+    exercises: exercises ?? this.exercises,
+    order: order ?? this.order,
+  );
 
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
     'exercises': [for (final e in exercises) e.toJson()],
+    'order': order,
   };
 
   factory Routine.fromJson(Map<String, dynamic> json) => Routine(
@@ -260,6 +309,7 @@ class Routine {
       for (final e in (json['exercises'] as List? ?? const []))
         WorkoutExercise.fromJson(Map<String, dynamic>.from(e as Map)),
     ],
+    order: (json['order'] as num?)?.toInt() ?? 0,
   );
 
   String encode() => jsonEncode(toJson());

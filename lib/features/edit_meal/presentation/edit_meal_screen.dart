@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:opennutritracker/features/recipes/presentation/widgets/new_food_mode_switch.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:image_picker/image_picker.dart';
@@ -48,6 +49,7 @@ class _EditMealScreenState extends State<EditMealScreen> {
   late bool _usesImperialUnits;
 
   late bool _editOnly;
+  bool _newFood = false;
 
   late EditMealBloc _editMealBloc;
 
@@ -131,6 +133,7 @@ class _EditMealScreenState extends State<EditMealScreen> {
     _intakeTypeEntity = args.intakeTypeEntity;
     _usesImperialUnits = args.usesImperialUnits;
     _editOnly = args.editOnly;
+    _newFood = args.newFood;
 
     _nameTextController.text = _mealEntity.name ?? "";
     _brandsTextController.text = _mealEntity.brands ?? "";
@@ -249,8 +252,14 @@ class _EditMealScreenState extends State<EditMealScreen> {
           backgroundColor: palette.canvas,
           surfaceTintColor: Colors.transparent,
           toolbarHeight: MediaQuery.textScalerOf(context).scale(kToolbarHeight),
+          bottom: _newFood
+              ? NewFoodModeSwitch(
+                  current: NewFoodMode.nutrition,
+                  usesImperialUnits: _usesImperialUnits,
+                )
+              : null,
           title: Text(
-            S.of(context).editMealLabel,
+            _newFood ? S.of(context).newFoodLabel : S.of(context).editMealLabel,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
@@ -1091,12 +1100,17 @@ class EditMealScreenArguments {
   final bool usesImperialUnits;
   final bool editOnly;
 
+  /// Creating a brand-new food: shows the "New food" title and the toggle
+  /// to build it from ingredients instead.
+  final bool newFood;
+
   EditMealScreenArguments(
     this.day,
     this.mealEntity,
     this.intakeTypeEntity,
     this.usesImperialUnits, {
     this.editOnly = false,
+    this.newFood = false,
   });
 }
 

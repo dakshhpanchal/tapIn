@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:logging/logging.dart';
 import 'package:opennutritracker/core/data/data_source/remote_search_cache_data_source.dart';
@@ -24,6 +25,7 @@ import 'package:opennutritracker/core/utils/widget/calorie_widget_writer.dart';
 import 'package:opennutritracker/core/utils/env.dart';
 import 'package:opennutritracker/core/utils/hive_storage_integrity_exception.dart';
 import 'package:opennutritracker/core/utils/locator.dart';
+import 'package:opennutritracker/features/gym/presentation/gym_cubit.dart';
 import 'package:opennutritracker/core/utils/logger_config.dart';
 import 'package:opennutritracker/core/utils/sentry_config.dart';
 import 'package:opennutritracker/core/utils/navigation_options.dart';
@@ -366,8 +368,12 @@ class _OpenNutriTrackerAppState extends State<OpenNutriTrackerApp>
       ],
       supportedLocales: _appLocales,
       // Above the Navigator, so dialogs and sheets are covered too.
-      builder: (context, child) =>
-          KeyboardDismisser(child: child ?? const SizedBox.shrink()),
+      // The gym cubit sits here too, above the Navigator, so every pushed gym
+      // screen (not only the ones opened from the tab) can find it.
+      builder: (context, child) => BlocProvider<GymCubit>.value(
+        value: locator<GymCubit>(),
+        child: KeyboardDismisser(child: child ?? const SizedBox.shrink()),
+      ),
       initialRoute: NavigationOptions.splashRoute,
       routes: {
         NavigationOptions.splashRoute: (context) =>

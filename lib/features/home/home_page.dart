@@ -319,62 +319,68 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 showMealMacros: showMealMacros,
                 mealKcalTarget: snackKcalTarget,
               ),
-            const SizedBox(height: 48.0),
+            // Clears the floating Add button, so the last item can scroll up.
+            const SizedBox(height: 96.0),
           ],
         ),
         Align(
           alignment: Alignment.bottomCenter,
           child: Visibility(
             visible: _isDragging,
-            child: SizedBox(
-              height: 70,
-              child: Stack(
-                children: [
-                  DragTarget<IntakeEntity>(
-                    onAcceptWithDetails: (data) {
-                      _confirmDelete(context, data.data);
-                    },
-                    onLeave: (data) {
-                      setState(() {
-                        _isIntakeDragging = false;
-                      });
-                    },
-                    builder: (context, candidateData, rejectedData) {
-                      return Container(
-                        margin: const EdgeInsets.fromLTRB(
-                          Dimens.spacing16,
-                          0,
-                          Dimens.spacing16,
-                          Dimens.spacing12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.error,
-                          borderRadius: Dimens.borderRadiusL,
-                        ),
-                        child: Center(
-                          child: Icon(
-                            Icons.delete_rounded,
-                            size: 32,
-                            color: Theme.of(context).colorScheme.onError,
+            // The Add button floats over the bottom of the page, so the delete
+            // bar sits above it instead of behind it.
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 88),
+              child: SizedBox(
+                height: 70,
+                child: Stack(
+                  children: [
+                    DragTarget<IntakeEntity>(
+                      onAcceptWithDetails: (data) {
+                        _confirmDelete(context, data.data);
+                      },
+                      onLeave: (data) {
+                        setState(() {
+                          _isIntakeDragging = false;
+                        });
+                      },
+                      builder: (context, candidateData, rejectedData) {
+                        return Container(
+                          margin: const EdgeInsets.fromLTRB(
+                            Dimens.spacing16,
+                            0,
+                            Dimens.spacing16,
+                            Dimens.spacing12,
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                  DragTarget<UserActivityEntity>(
-                    onAcceptWithDetails: (data) {
-                      _confirmDeleteActivity(context, data.data);
-                    },
-                    onLeave: (data) {
-                      setState(() {
-                        _isActivityDragging = false;
-                      });
-                    },
-                    builder: (context, candidateData, rejectedData) {
-                      return const SizedBox.expand();
-                    },
-                  ),
-                ],
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.error,
+                            borderRadius: Dimens.borderRadiusL,
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.delete_rounded,
+                              size: 32,
+                              color: Theme.of(context).colorScheme.onError,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    DragTarget<UserActivityEntity>(
+                      onAcceptWithDetails: (data) {
+                        _confirmDeleteActivity(context, data.data);
+                      },
+                      onLeave: (data) {
+                        setState(() {
+                          _isActivityDragging = false;
+                        });
+                      },
+                      builder: (context, candidateData, rejectedData) {
+                        return const SizedBox.expand();
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

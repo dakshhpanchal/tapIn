@@ -119,7 +119,8 @@ class _DiaryPageState extends State<DiaryPage> with WidgetsBindingObserver {
     bool showActivityTracking,
   ) {
     return ListView(
-      padding: const EdgeInsets.only(bottom: Dimens.spacing16),
+      // Clears the floating Add button.
+      padding: const EdgeInsets.only(bottom: 96),
       children: [
         DiaryTableCalendar(
           trackedDaysMap: trackedDaysMap,

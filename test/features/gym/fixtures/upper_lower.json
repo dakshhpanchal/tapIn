@@ -1,0 +1,276 @@
+{
+  "format": "tapin-workouts",
+  "version": 1,
+  "workouts": [
+    {
+      "name": "Upper",
+      "exercises": [
+        {
+          "exercise": "Tbar Rowing",
+          "muscle": "back",
+          "sets": [
+            {
+              "weight": 40,
+              "reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Lateral Raises",
+          "muscle": "shoulders",
+          "plates": true,
+          "setting": "10",
+          "sets": [
+            {
+              "weight": 5,
+              "reps": 0
+            },
+            {
+              "weight": 5,
+              "reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Smith Incline Press",
+          "muscle": "chest",
+          "sets": [
+            {
+              "weight": 22.5,
+              "reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Lat Pulldown",
+          "muscle": "back",
+          "plates": true,
+          "sets": [
+            {
+              "weight": 9,
+              "reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Machine Overhead Press",
+          "muscle": "shoulders",
+          "sets": [
+            {
+              "weight": 40,
+              "reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Peck Deck",
+          "muscle": "chest",
+          "plates": true,
+          "setting": "0",
+          "sets": [
+            {
+              "weight": 18,
+              "reps": 0
+            },
+            {
+              "weight": 18,
+              "reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Single Arm Sagital Row",
+          "muscle": "back",
+          "sets": [
+            {
+              "weight": 30,
+              "reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Rear Delt Fly",
+          "muscle": "shoulders",
+          "plates": true,
+          "setting": "3",
+          "sets": [
+            {
+              "weight": 12,
+              "reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Recline Curls",
+          "muscle": "biceps",
+          "sets": [
+            {
+              "weight": 15,
+              "reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Seated Curls",
+          "muscle": "biceps",
+          "sets": [
+            {
+              "weight": 15,
+              "reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Hammer Curls",
+          "muscle": "biceps",
+          "sets": [
+            {
+              "weight": 15,
+              "reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Single Arm Cable Extension",
+          "muscle": "triceps",
+          "plates": true,
+          "setting": "6",
+          "sets": [
+            {
+              "weight": 7,
+              "reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Single Arm Overhead",
+          "muscle": "triceps",
+          "plates": true,
+          "setting": "7",
+          "sets": [
+            {
+              "weight": 6,
+              "reps": 0
+            },
+            {
+              "weight": 6,
+              "reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Abs",
+          "muscle": "abs",
+          "plates": true,
+          "sets": [
+            {
+              "weight": 15,
+              "reps": 0
+            },
+            {
+              "weight": 15,
+              "reps": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Lower",
+      "exercises": [
+        {
+          "exercise": "Single Leg Extension",
+          "muscle": "quads",
+          "plates": true,
+          "setting": "0 1 3",
+          "sets": [
+            {
+              "weight": 8,
+              "reps": 0
+            },
+            {
+              "weight": 7,
+              "reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Leg Curls",
+          "muscle": "hamstrings",
+          "plates": true,
+          "setting": "0 1/2",
+          "sets": [
+            {
+              "weight": 7,
+              "reps": 0
+            },
+            {
+              "weight": 6,
+              "reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Hack Squats",
+          "muscle": "quads",
+          "sets": [
+            {
+              "weight": 40,
+              "reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Rdl",
+          "muscle": "hamstrings",
+          "sets": [
+            {
+              "weight": 25,
+              "reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Adductors",
+          "muscle": "quads",
+          "plates": true,
+          "sets": [
+            {
+              "weight": 11,
+              "reps": 0
+            },
+            {
+              "weight": 11,
+              "reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Abductors",
+          "muscle": "glutes",
+          "plates": true,
+          "sets": [
+            {
+              "weight": 5,
+              "reps": 0
+            }
+          ]
+        },
+        {
+          "exercise": "Calves",
+          "muscle": "calves",
+          "sets": [
+            {
+              "weight": 25,
+              "reps": 0
+            },
+            {
+              "weight": 25,
+              "reps": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

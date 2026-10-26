@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:opennutritracker/core/domain/entity/intake_type_entity.dart';
 import 'package:opennutritracker/core/domain/entity/recipe_entity.dart';
 import 'package:opennutritracker/core/domain/usecase/delete_recipe_usecase.dart';
 import 'package:opennutritracker/core/domain/usecase/get_config_usecase.dart';
@@ -10,10 +9,10 @@ import 'package:opennutritracker/core/styles/dimens.dart';
 import 'package:opennutritracker/core/utils/locator.dart';
 import 'package:opennutritracker/core/utils/navigation_options.dart';
 import 'package:opennutritracker/features/add_meal/domain/entity/meal_entity.dart';
-import 'package:opennutritracker/features/edit_meal/presentation/edit_meal_screen.dart';
 import 'package:opennutritracker/features/recipes/presentation/bloc/recipes_bloc.dart';
 import 'package:opennutritracker/features/recipes/presentation/screens/recipe_detail_screen.dart';
 import 'package:opennutritracker/features/recipes/presentation/widgets/custom_meals_tab.dart';
+import 'package:opennutritracker/features/recipes/presentation/widgets/new_food_mode_switch.dart';
 import 'package:opennutritracker/features/recipes/presentation/widgets/recipe_list_item.dart';
 import 'package:opennutritracker/features/settings/presentation/bloc/custom_meals_bloc.dart';
 import 'package:opennutritracker/generated/l10n.dart';
@@ -97,42 +96,27 @@ class _RecipesPageState extends State<RecipesPage> with WidgetsBindingObserver {
       appBar: AppBar(
         title: Text(s.myFoodsLabel),
         actions: [
-          PopupMenuButton<_FoodAction>(
-            tooltip: s.addLabel,
+          IconButton(
+            tooltip: s.importRecipeLabel,
+            icon: const Icon(Icons.qr_code_scanner_outlined),
+            onPressed: () async {
+              await Navigator.of(
+                context,
+              ).pushNamed(NavigationOptions.importRecipeScannerRoute);
+              if (mounted) _reload();
+            },
+          ),
+          IconButton(
+            tooltip: s.newFoodLabel,
             icon: const Icon(Icons.add),
-            onSelected: (action) => _onAddSelected(context, action),
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: _FoodAction.newRecipe,
-                child: Row(
-                  children: [
-                    const Icon(Icons.menu_book_outlined),
-                    const SizedBox(width: Dimens.spacing12),
-                    Text(s.createRecipeTitle),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: _FoodAction.newFood,
-                child: Row(
-                  children: [
-                    const Icon(Icons.restaurant_outlined),
-                    const SizedBox(width: Dimens.spacing12),
-                    Text(s.newCustomMealLabel),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: _FoodAction.importRecipe,
-                child: Row(
-                  children: [
-                    const Icon(Icons.qr_code_scanner_outlined),
-                    const SizedBox(width: Dimens.spacing12),
-                    Text(s.importRecipeLabel),
-                  ],
-                ),
-              ),
-            ],
+            onPressed: () async {
+              await openNewFood(
+                context,
+                NewFoodMode.ingredients,
+                usesImperialUnits: _usesImperialUnits,
+              );
+              if (mounted) _reload();
+            },
           ),
         ],
       ),
@@ -152,31 +136,6 @@ class _RecipesPageState extends State<RecipesPage> with WidgetsBindingObserver {
         ),
       ),
     );
-  }
-
-  Future<void> _onAddSelected(BuildContext context, _FoodAction action) async {
-    switch (action) {
-      case _FoodAction.newRecipe:
-        await Navigator.of(
-          context,
-        ).pushNamed(NavigationOptions.recipeBuilderRoute);
-      case _FoodAction.newFood:
-        await Navigator.of(context).pushNamed(
-          NavigationOptions.editMealRoute,
-          arguments: EditMealScreenArguments(
-            DateTime.now(),
-            MealEntity.empty(),
-            IntakeTypeEntity.breakfast,
-            false,
-            editOnly: true,
-          ),
-        );
-      case _FoodAction.importRecipe:
-        await Navigator.of(
-          context,
-        ).pushNamed(NavigationOptions.importRecipeScannerRoute);
-    }
-    if (mounted) _reload();
   }
 
   Widget _buildList() {
@@ -592,4 +551,3 @@ class _RecipesPageState extends State<RecipesPage> with WidgetsBindingObserver {
   }
 }
 
-enum _FoodAction { newRecipe, newFood, importRecipe }

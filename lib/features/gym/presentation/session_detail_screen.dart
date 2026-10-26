@@ -4,6 +4,7 @@ import 'package:opennutritracker/core/presentation/widgets/app_card.dart';
 import 'package:opennutritracker/core/styles/dimens.dart';
 import 'package:opennutritracker/features/gym/domain/gym_calc.dart';
 import 'package:opennutritracker/features/gym/domain/gym_models.dart';
+import 'package:opennutritracker/features/gym/presentation/exercise_progress_screen.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_cubit.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_format.dart';
 
@@ -18,7 +19,6 @@ class SessionDetailScreen extends StatelessWidget {
     final cubit = context.read<GymCubit>();
     final useLb = cubit.state.useLb;
     final text = Theme.of(context).textTheme;
-    final unit = weightUnitLabel(useLb);
     return Scaffold(
       appBar: AppBar(
         title: Text(session.name),
@@ -57,11 +57,12 @@ class SessionDetailScreen extends StatelessWidget {
                   runSpacing: Dimens.spacing12,
                   children: [
                     _stat(context, 'Time', formatDuration(session.duration)),
-                    _stat(
-                      context,
-                      'Volume',
-                      volumeText(sessionVolume(session), useLb),
-                    ),
+                    if (sessionVolume(session) > 0)
+                      _stat(
+                        context,
+                        'Volume',
+                        volumeText(sessionVolume(session), useLb),
+                      ),
                     _stat(context, 'Sets', '${sessionSetCount(session)}'),
                   ],
                 ),
@@ -75,7 +76,40 @@ class SessionDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(e.name, style: text.titleMedium),
+                  InkWell(
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => ExerciseProgressScreen(
+                          exerciseId: e.exerciseId,
+                          name: e.name,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(child: Text(e.name, style: text.titleMedium)),
+                        Icon(
+                          Icons.show_chart_rounded,
+                          size: 18,
+                          color: mutedColor(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (e.setting.trim().isNotEmpty)
+                    Text(
+                      'Setting: ${e.setting.trim()}',
+                      style: text.bodySmall?.copyWith(
+                        color: mutedColor(context),
+                      ),
+                    ),
+                  if (e.note.trim().isNotEmpty)
+                    Text(
+                      'Note: ${e.note.trim()}',
+                      style: text.bodySmall?.copyWith(
+                        color: mutedColor(context),
+                      ),
+                    ),
                   const SizedBox(height: Dimens.spacing8),
                   for (var i = 0; i < e.sets.length; i++)
                     Padding(
@@ -92,7 +126,8 @@ class SessionDetailScreen extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '${weightText(e.sets[i].weightKg, useLb)} $unit'
+                            '${weightShown(e.sets[i].weightKg, plates: e.plates, useLb: useLb)} '
+                            '${unitFor(plates: e.plates, useLb: useLb)}'
                             ' × ${e.sets[i].reps}',
                           ),
                         ],

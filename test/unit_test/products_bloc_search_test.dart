@@ -21,6 +21,14 @@ class _FakeSearchProductsUseCase implements SearchProductsUseCase {
     String searchString, {
     bool skipRemote = false,
   }) {
+    // The bloc asks for local matches first; nothing is stored locally in
+    // these tests, so that phase answers at once and only the remote call is
+    // the one a test drives.
+    if (skipRemote) {
+      return Future.value(
+        const SearchProductsResult(meals: [], remoteSourceEmpty: false),
+      );
+    }
     queries.add(searchString);
     final completer = Completer<SearchProductsResult>();
     calls.add(completer);
@@ -32,7 +40,7 @@ class _FakeSearchProductsUseCase implements SearchProductsUseCase {
     String searchString, {
     bool skipRemote = false,
     bool forResolution = false,
-  }) => searchOFFProductsByString(searchString);
+  }) => searchOFFProductsByString(searchString, skipRemote: skipRemote);
 
   @override
   dynamic noSuchMethod(Invocation invocation) =>
@@ -58,7 +66,9 @@ const _emptyResult = SearchProductsResult(
 /// has started.
 Future<void> _settleDebounce() async {
   await Future<void>.delayed(
-    searchDebounceDuration + const Duration(milliseconds: 100),
+    searchDebounceDuration +
+        remoteSearchDelay +
+        const Duration(milliseconds: 100),
   );
 }
 

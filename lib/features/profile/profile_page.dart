@@ -48,7 +48,8 @@ class _ProfilePageState extends State<ProfilePage> {
   /// half of its 56 dp above the bottom bar and so over the end of this list.
   /// The old 32 dp left the last row 5 dp above the button, close enough that
   /// a tap meant for it could open the Add sheet instead (#1368).
-  static const double _fabClearance = 56 / 2 + Dimens.spacing32;
+  // The Add button floats above the bottom bar, over the page's last rows.
+  static const double _fabClearance = 96;
 
   late ProfileBloc _profileBloc;
 

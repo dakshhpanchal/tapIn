@@ -30,8 +30,13 @@ class _FakeProductsRepository implements ProductsRepository {
   /// tab's (#1164, #1190).
   bool? lastForResolution;
 
+  /// How many times each remote source was actually asked.
+  int offCalls = 0;
+  int fdcCalls = 0;
+
   @override
   Future<List<MealEntity>> getOFFProductsByString(String searchString) async {
+    offCalls++;
     if (offThrowOn.contains(searchString)) {
       throw Exception('OFF HTTP 429');
     }
@@ -44,6 +49,7 @@ class _FakeProductsRepository implements ProductsRepository {
     bool forResolution = false,
   }) async {
     lastForResolution = forResolution;
+    fdcCalls++;
     if (fdcThrowOn.contains(searchString)) {
       throw Exception('FDC HTTP 429');
     }
@@ -229,6 +235,55 @@ void main() {
         recipeDataSource,
         getConfigUsecase,
       );
+    });
+
+    test('a repeated query is answered from memory, not the network', () async {
+      productsRepository.offResults['tofu'] = [
+        _meal(code: 'off-1', name: 'Tofu', source: MealSourceEntity.off),
+      ];
+      final first = await useCase.searchOFFProductsByString('tofu');
+      final again = await useCase.searchOFFProductsByString('Tofu ');
+      expect(productsRepository.offCalls, 1);
+      expect(again.meals.map((m) => m.code), first.meals.map((m) => m.code));
+    });
+
+    test('a failed search is not remembered, so it is retried', () async {
+      productsRepository.offThrowOn.add('tofu');
+      final failed = await useCase.searchOFFProductsByString('tofu');
+      expect(failed.remoteSourceFailed, isTrue);
+
+      productsRepository.offThrowOn.clear();
+      productsRepository.offResults['tofu'] = [
+        _meal(code: 'off-1', name: 'Tofu', source: MealSourceEntity.off),
+      ];
+      final retry = await useCase.searchOFFProductsByString('tofu');
+      expect(productsRepository.offCalls, 2);
+      expect(retry.meals.single.code, 'off-1');
+    });
+
+    test('changing the food sources or clearing drops remembered pages',
+        () async {
+      await useCase.searchFDCFoodByString('rice');
+      await useCase.searchFDCFoodByString('rice');
+      expect(productsRepository.fdcCalls, 1);
+
+      getConfigUsecase.foodSourceToggles = {'BLS': false};
+      await useCase.searchFDCFoodByString('rice');
+      expect(productsRepository.fdcCalls, 2);
+
+      useCase.clearSearchCache();
+      await useCase.searchFDCFoodByString('rice');
+      expect(productsRepository.fdcCalls, 3);
+    });
+
+    test('local-only search shows own foods without touching the network',
+        () async {
+      customMealDataSource.meals.add(MealDBO.fromMealEntity(_meal(
+          code: 'c1', name: 'Tofu Bowl', source: MealSourceEntity.custom)));
+      final local =
+          await useCase.searchOFFProductsByString('tofu', skipRemote: true);
+      expect(local.meals.single.name, 'Tofu Bowl');
+      expect(productsRepository.offCalls, 0);
     });
 
     test('prepends matching custom meals for OFF search', () async {

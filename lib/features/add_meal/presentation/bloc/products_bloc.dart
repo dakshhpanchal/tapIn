@@ -38,7 +38,11 @@ class ProductsBloc extends Bloc<ProductsEvent, ProductsState> {
       (event, emit) => _loadProducts(event.searchString, emit, force: true),
     );
     on<SearchInputChangedEvent>(
-      (event, emit) => _loadProducts(event.searchString, emit),
+      (event, emit) => _loadProducts(
+        event.searchString,
+        emit,
+        remoteDelay: remoteSearchDelay,
+      ),
       transformer: debounceRestartable(searchDebounceDuration),
     );
     // Retry re-runs the last query through the normal path, so the result
@@ -63,6 +67,7 @@ class ProductsBloc extends Bloc<ProductsEvent, ProductsState> {
     String searchString,
     Emitter<ProductsState> emit, {
     bool force = false,
+    Duration remoteDelay = Duration.zero,
   }) async {
     // Sub-threshold queries (blank included) query nothing — not even
     // local sources. Chip taps and tab switches re-submit the current
@@ -95,6 +100,30 @@ class ProductsBloc extends Bloc<ProductsEvent, ProductsState> {
       emit(ProductsLoadingState());
     }
     try {
+      // Local matches first — your own foods, recipes, history and cached
+      // results need no network, so they show at once instead of waiting for
+      // the remote source.
+      final local = await _searchProductUseCase.searchOFFProductsByString(
+        searchString,
+        skipRemote: true,
+      );
+      final localConfig = await _getConfigUsecase.getConfig();
+      if (emit.isDone || run != _generation) return;
+      if (local.meals.isNotEmpty) {
+        emit(
+          ProductsLoadedState(
+            products: local.meals,
+            usesImperialUnits: localConfig.usesImperialFoodUnits,
+            remoteSourceEmpty: false,
+            remoteSourceFailed: false,
+            query: searchString,
+          ),
+        );
+      }
+      if (remoteDelay > Duration.zero) {
+        await Future<void>.delayed(remoteDelay);
+        if (emit.isDone || run != _generation) return;
+      }
       final result = await _searchProductUseCase.searchOFFProductsByString(
         searchString,
       );

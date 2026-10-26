@@ -3,7 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:stream_transform/stream_transform.dart';
 
 /// Shared tuning for search-as-you-type across the product and food blocs.
-const searchDebounceDuration = Duration(milliseconds: 500);
+///
+/// Local matches (your foods, recipes, cache) are shown after this short pause;
+/// the network search waits a further [remoteSearchDelay], so the remote source
+/// still sees roughly one request per typing pause (the two add up to the old
+/// 500 ms).
+const searchDebounceDuration = Duration(milliseconds: 200);
+const remoteSearchDelay = Duration(milliseconds: 300);
 
 /// Minimum trimmed query length before a search runs at all. Shorter (or
 /// blank) input doesn't query any source — local or remote — and resets

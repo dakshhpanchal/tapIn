@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:opennutritracker/features/recipes/presentation/widgets/new_food_mode_switch.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
@@ -22,7 +23,11 @@ import 'package:opennutritracker/generated/l10n.dart';
 
 class RecipeBuilderArguments {
   final RecipeEntity? existing;
-  const RecipeBuilderArguments({this.existing});
+
+  /// Creating a brand-new food: shows the "New food" title and the toggle
+  /// to enter nutrition values instead.
+  final bool newFood;
+  const RecipeBuilderArguments({this.existing, this.newFood = false});
 }
 
 class RecipeBuilderScreen extends StatefulWidget {
@@ -41,6 +46,7 @@ class _RecipeBuilderScreenState extends State<RecipeBuilderScreen> {
   late TextEditingController _tagsController;
 
   bool _initialized = false;
+  bool _newFood = false;
 
   @override
   void initState() {
@@ -60,6 +66,7 @@ class _RecipeBuilderScreenState extends State<RecipeBuilderScreen> {
       _initialized = true;
       final args = ModalRoute.of(context)?.settings.arguments
           as RecipeBuilderArguments?;
+      _newFood = args?.newFood ?? false;
       _bloc.add(InitializeBuilderEvent(existing: args?.existing));
       if (args?.existing != null) {
         final r = args!.existing!;
@@ -126,9 +133,14 @@ class _RecipeBuilderScreenState extends State<RecipeBuilderScreen> {
           child: Scaffold(
             appBar: AppBar(
             toolbarHeight: MediaQuery.textScalerOf(context).scale(kToolbarHeight),
+            bottom: _newFood && !state.isExistingRecipe
+                ? const NewFoodModeSwitch(current: NewFoodMode.ingredients)
+                : null,
             title: Text(
               state.isExistingRecipe
                   ? S.of(context).editRecipeTitle
+                  : _newFood
+                  ? S.of(context).newFoodLabel
                   : S.of(context).createRecipeTitle,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,

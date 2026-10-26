@@ -32,7 +32,11 @@ class FoodBloc extends Bloc<FoodEvent, FoodState> {
       (event, emit) => _loadFood(event.searchString, emit, force: true),
     );
     on<SearchFoodInputChangedEvent>(
-      (event, emit) => _loadFood(event.searchString, emit),
+      (event, emit) => _loadFood(
+        event.searchString,
+        emit,
+        remoteDelay: remoteSearchDelay,
+      ),
       transformer: debounceRestartable(searchDebounceDuration),
     );
     // Retry re-runs the last query through the normal path, so the result
@@ -54,6 +58,7 @@ class FoodBloc extends Bloc<FoodEvent, FoodState> {
     String searchString,
     Emitter<FoodState> emit, {
     bool force = false,
+    Duration remoteDelay = Duration.zero,
   }) async {
     if (searchString.trim().length < minQueryLength) {
       // Supersedes any search still in flight: its results would replace
@@ -78,6 +83,28 @@ class FoodBloc extends Bloc<FoodEvent, FoodState> {
       emit(FoodLoadingState());
     }
     try {
+      // See ProductsBloc: local matches show first, the network search follows.
+      final local = await _searchProductUseCase.searchFDCFoodByString(
+        searchString,
+        skipRemote: true,
+      );
+      final localConfig = await _getConfigUsecase.getConfig();
+      if (emit.isDone || run != _generation) return;
+      if (local.meals.isNotEmpty) {
+        emit(
+          FoodLoadedState(
+            food: local.meals,
+            usesImperialUnits: localConfig.usesImperialFoodUnits,
+            remoteSourceEmpty: false,
+            remoteSourceFailed: false,
+            query: searchString,
+          ),
+        );
+      }
+      if (remoteDelay > Duration.zero) {
+        await Future<void>.delayed(remoteDelay);
+        if (emit.isDone || run != _generation) return;
+      }
       final result = await _searchProductUseCase.searchFDCFoodByString(
         searchString,
       );

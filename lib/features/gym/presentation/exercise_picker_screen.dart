@@ -2,15 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:opennutritracker/core/styles/dimens.dart';
 import 'package:opennutritracker/features/gym/domain/gym_models.dart';
-import 'package:opennutritracker/features/gym/presentation/exercise_progress_screen.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_cubit.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_format.dart';
 
-/// Search and pick an exercise. In [browse] mode, tapping a row opens that
-/// exercise's progress instead of returning it.
+/// Pick one of your exercises, or create a new one. There is no built-in
+/// list: exercises are whatever you add.
 class ExercisePickerScreen extends StatefulWidget {
-  final bool browse;
-  const ExercisePickerScreen({super.key, this.browse = false});
+  const ExercisePickerScreen({super.key});
 
   @override
   State<ExercisePickerScreen> createState() => _ExercisePickerScreenState();
@@ -25,22 +23,46 @@ class _ExercisePickerScreenState extends State<ExercisePickerScreen> {
     final cubit = context.read<GymCubit>();
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.browse ? 'Exercises' : 'Add exercise'),
+        title: const Text('Add exercise'),
         actions: [
           IconButton(
             tooltip: 'New exercise',
             icon: const Icon(Icons.add_rounded),
-            onPressed: () => _createExercise(context, cubit),
+            onPressed: () => _create(context, cubit),
           ),
         ],
       ),
       body: BlocBuilder<GymCubit, GymState>(
         builder: (context, state) {
           final q = _query.trim().toLowerCase();
-          final items = state.exercises.where((e) {
-            return (_muscle == null || e.muscle == _muscle) &&
-                (q.isEmpty || e.name.toLowerCase().contains(q));
-          }).toList();
+          final items = [
+            for (final e in state.exercises)
+              if ((_muscle == null || e.muscle == _muscle) &&
+                  (q.isEmpty || e.name.toLowerCase().contains(q)))
+                e,
+          ];
+          if (state.exercises.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(Dimens.spacing32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'No exercises yet.',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: Dimens.spacing12),
+                    FilledButton.icon(
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('Create exercise'),
+                      onPressed: () => _create(context, cubit),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
           return Column(
             children: [
               Padding(
@@ -48,7 +70,7 @@ class _ExercisePickerScreenState extends State<ExercisePickerScreen> {
                   Dimens.spacing16,
                   Dimens.spacing8,
                   Dimens.spacing16,
-                  Dimens.spacing4,
+                  Dimens.spacing8,
                 ),
                 child: TextField(
                   onChanged: (v) => setState(() => _query = v),
@@ -82,14 +104,9 @@ class _ExercisePickerScreenState extends State<ExercisePickerScreen> {
                     ? Center(
                         child: TextButton.icon(
                           icon: const Icon(Icons.add_rounded),
-                          label: Text(
-                            q.isEmpty ? 'Create exercise' : 'Create "$_query"',
-                          ),
-                          onPressed: () => _createExercise(
-                            context,
-                            cubit,
-                            initialName: _query.trim(),
-                          ),
+                          label: Text('Create "${_query.trim()}"'),
+                          onPressed: () =>
+                              _create(context, cubit, initialName: _query),
                         ),
                       )
                     : ListView.builder(
@@ -99,24 +116,28 @@ class _ExercisePickerScreenState extends State<ExercisePickerScreen> {
                           return ListTile(
                             title: Text(e.name),
                             subtitle: Text(
-                              [
-                                e.muscle.label,
-                                if (e.equipment.isNotEmpty) e.equipment,
-                                if (e.isCustom) 'Custom',
-                              ].join(' · '),
+                              e.plates
+                                  ? '${e.muscle.label} · plates'
+                                  : e.muscle.label,
                               style: TextStyle(color: mutedColor(context)),
                             ),
-                            trailing: widget.browse
-                                ? const Icon(Icons.chevron_right_rounded)
-                                : null,
-                            onTap: () => widget.browse
-                                ? Navigator.of(context).push(
-                                    MaterialPageRoute<void>(
-                                      builder: (_) =>
-                                          ExerciseProgressScreen(exercise: e),
-                                    ),
-                                  )
-                                : Navigator.of(context).pop(e),
+                            trailing: PopupMenuButton<String>(
+                              tooltip: 'Exercise options',
+                              onSelected: (v) => v == 'edit'
+                                  ? _edit(context, cubit, e)
+                                  : _delete(context, cubit, e),
+                              itemBuilder: (_) => const [
+                                PopupMenuItem(
+                                  value: 'edit',
+                                  child: Text('Edit'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'delete',
+                                  child: Text('Delete'),
+                                ),
+                              ],
+                            ),
+                            onTap: () => Navigator.of(context).pop(e),
                           );
                         },
                       ),
@@ -138,53 +159,50 @@ class _ExercisePickerScreenState extends State<ExercisePickerScreen> {
     ),
   );
 
-  Future<void> _createExercise(
-    BuildContext context,
-    GymCubit cubit, {
-    String initialName = '',
+  /// Name, muscle group and whether weight is logged in machine plates.
+  /// Returns null when cancelled or the name is empty.
+  Future<({String name, MuscleGroup muscle, bool plates})?> _askDetails(
+    BuildContext context, {
+    required String title,
+    required String confirm,
+    String name = '',
+    MuscleGroup? muscle,
+    bool plates = false,
   }) async {
-    final nameController = TextEditingController(text: initialName);
-    var muscle = _muscle ?? MuscleGroup.chest;
-    var kind = ExerciseKind.weighted;
-    final created = await showDialog<bool>(
+    final controller = TextEditingController(text: name.trim());
+    var chosenMuscle = muscle ?? _muscle ?? MuscleGroup.chest;
+    var usesPlates = plates;
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
-          title: const Text('New exercise'),
+          title: Text(title),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                controller: nameController,
+                controller: controller,
                 autofocus: true,
                 textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(labelText: 'Name'),
               ),
               const SizedBox(height: Dimens.spacing12),
               DropdownButtonFormField<MuscleGroup>(
-                initialValue: muscle,
+                initialValue: chosenMuscle,
                 decoration: const InputDecoration(labelText: 'Muscle group'),
                 items: [
                   for (final m in MuscleGroup.values)
                     DropdownMenuItem(value: m, child: Text(m.label)),
                 ],
-                onChanged: (v) => setLocal(() => muscle = v ?? muscle),
+                onChanged: (v) =>
+                    setLocal(() => chosenMuscle = v ?? chosenMuscle),
               ),
-              const SizedBox(height: Dimens.spacing12),
-              SegmentedButton<ExerciseKind>(
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment(
-                    value: ExerciseKind.weighted,
-                    label: Text('Weight × reps'),
-                  ),
-                  ButtonSegment(
-                    value: ExerciseKind.bodyweight,
-                    label: Text('Bodyweight'),
-                  ),
-                ],
-                selected: {kind},
-                onSelectionChanged: (v) => setLocal(() => kind = v.first),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Weight in plates'),
+                subtitle: const Text('Machine stack, instead of kg'),
+                value: usesPlates,
+                onChanged: (v) => setLocal(() => usesPlates = v),
               ),
             ],
           ),
@@ -195,21 +213,76 @@ class _ExercisePickerScreenState extends State<ExercisePickerScreen> {
             ),
             FilledButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Create'),
+              child: Text(confirm),
             ),
           ],
         ),
       ),
     );
-    final name = nameController.text.trim();
-    nameController.dispose();
-    if (created != true || name.isEmpty) return;
-    final exercise = await cubit.createExercise(
-      name: name,
-      muscle: muscle,
-      kind: kind,
+    final result = controller.text.trim();
+    controller.dispose();
+    if (confirmed != true || result.isEmpty) return null;
+    return (name: result, muscle: chosenMuscle, plates: usesPlates);
+  }
+
+  Future<void> _create(
+    BuildContext context,
+    GymCubit cubit, {
+    String initialName = '',
+  }) async {
+    final details = await _askDetails(
+      context,
+      title: 'New exercise',
+      confirm: 'Create',
+      name: initialName,
     );
-    if (!context.mounted) return;
-    if (!widget.browse) Navigator.of(context).pop(exercise);
+    if (details == null) return;
+    final exercise = await cubit.createExercise(
+      details.name,
+      muscle: details.muscle,
+      plates: details.plates,
+    );
+    if (context.mounted) Navigator.of(context).pop(exercise);
+  }
+
+  Future<void> _edit(BuildContext context, GymCubit cubit, Exercise e) async {
+    final details = await _askDetails(
+      context,
+      title: 'Edit exercise',
+      confirm: 'Save',
+      name: e.name,
+      muscle: e.muscle,
+      plates: e.plates,
+    );
+    if (details == null) return;
+    await cubit.updateExercise(
+      e,
+      name: details.name,
+      muscle: details.muscle,
+      plates: details.plates,
+    );
+  }
+
+  Future<void> _delete(BuildContext context, GymCubit cubit, Exercise e) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete "${e.name}"?'),
+        content: const Text(
+          'It is removed from this list. Workouts you already logged keep it.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) await cubit.deleteExercise(e.id);
   }
 }

@@ -2,17 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:opennutritracker/core/presentation/widgets/app_card.dart';
 import 'package:opennutritracker/core/styles/dimens.dart';
-import 'package:opennutritracker/core/utils/locator.dart';
 import 'package:opennutritracker/features/gym/domain/gym_calc.dart';
 import 'package:opennutritracker/features/gym/domain/gym_models.dart';
 import 'package:opennutritracker/features/gym/presentation/active_workout_screen.dart';
-import 'package:opennutritracker/features/gym/presentation/exercise_picker_screen.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_cubit.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_format.dart';
+import 'package:opennutritracker/features/gym/presentation/gym_transfer_ui.dart';
+import 'package:opennutritracker/features/gym/presentation/reorder_sheet.dart';
 import 'package:opennutritracker/features/gym/presentation/session_detail_screen.dart';
+import 'package:opennutritracker/features/gym/presentation/workout_editor_screen.dart';
 
-/// The Gym tab: start or resume a workout, routines, this week's totals, and
-/// workout history.
+/// The Gym tab: your planned workouts (start one, then log reps as you go),
+/// a quick workout, and history. The cubit is provided above the Navigator.
 class GymPage extends StatefulWidget {
   const GymPage({super.key});
 
@@ -21,27 +22,11 @@ class GymPage extends StatefulWidget {
 }
 
 class _GymPageState extends State<GymPage> {
-  // A lazy singleton shared with the workout screens, so provide it by value
-  // rather than letting BlocProvider close it.
-  final GymCubit _cubit = locator<GymCubit>();
-
   @override
   void initState() {
     super.initState();
-    _cubit.load();
+    context.read<GymCubit>().load();
   }
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocProvider<GymCubit>.value(
-      value: _cubit,
-      child: const _GymView(),
-    );
-  }
-}
-
-class _GymView extends StatelessWidget {
-  const _GymView();
 
   @override
   Widget build(BuildContext context) {
@@ -52,93 +37,83 @@ class _GymView extends StatelessWidget {
         }
         final cubit = context.read<GymCubit>();
         final text = Theme.of(context).textTheme;
-        final weekStart = _startOfWeek(DateTime.now());
-        final thisWeek = [
-          for (final s in state.sessions)
-            if (!s.startedAt.isBefore(weekStart)) s,
-        ];
         return ListView(
           padding: const EdgeInsets.fromLTRB(
             Dimens.spacing16,
             Dimens.spacing8,
             Dimens.spacing16,
-            Dimens.spacing32,
+            120,
           ),
           children: [
-            if (state.active != null)
-              _ActiveCard(session: state.active!)
-            else
-              FilledButton.icon(
-                icon: const Icon(Icons.play_arrow_rounded),
-                label: const Text('Start empty workout'),
-                onPressed: () async {
-                  await cubit.startEmptyWorkout();
-                  if (context.mounted) _openActive(context);
-                },
-              ),
+            if (state.active != null) ...[
+              _ActiveCard(session: state.active!),
+              const SizedBox(height: Dimens.spacing16),
+            ],
+            _WeekCard(sessions: state.sessions),
             const SizedBox(height: Dimens.spacing16),
-            AppCard(
-              padding: const EdgeInsets.all(Dimens.spacing20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('This week', style: text.titleMedium),
-                  const SizedBox(height: Dimens.spacing12),
-                  Wrap(
-                    spacing: Dimens.spacing24,
-                    runSpacing: Dimens.spacing12,
-                    children: [
-                      _stat(context, 'Workouts', '${thisWeek.length}'),
-                      _stat(
-                        context,
-                        'Sets',
-                        '${thisWeek.fold(0, (n, s) => n + sessionSetCount(s))}',
-                      ),
-                      _stat(
-                        context,
-                        'Volume',
-                        volumeText(
-                          thisWeek.fold(0.0, (n, s) => n + sessionVolume(s)),
-                          state.useLb,
-                        ),
-                      ),
-                    ],
-                  ),
-                  ..._muscleBalance(context, thisWeek),
-                ],
-              ),
+            Row(
+              children: [
+                Expanded(child: Text('My workouts', style: text.titleMedium)),
+                IconButton(
+                  tooltip: 'Import workouts',
+                  icon: const Icon(Icons.file_download_outlined),
+                  onPressed: () => importWorkouts(context),
+                ),
+                IconButton(
+                  tooltip: 'Export workouts',
+                  icon: const Icon(Icons.file_upload_outlined),
+                  onPressed: state.routines.isEmpty && state.sessions.isEmpty
+                      ? null
+                      : () => exportWorkouts(context),
+                ),
+                IconButton(
+                  tooltip: 'Reorder workouts',
+                  icon: const Icon(Icons.swap_vert_rounded),
+                  onPressed: state.routines.length < 2
+                      ? null
+                      : () => _reorderWorkouts(context, state.routines),
+                ),
+              ],
+            ),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('New workout'),
+              onPressed: () => _openEditor(context),
             ),
             const SizedBox(height: Dimens.spacing8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                icon: const Icon(Icons.fitness_center_rounded, size: 18),
-                label: const Text('Exercises & progress'),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => BlocProvider<GymCubit>.value(
-                      value: cubit,
-                      child: const ExercisePickerScreen(browse: true),
-                    ),
-                  ),
+            if (state.routines.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: Dimens.spacing16),
+                child: Text(
+                  'Create a workout with its exercises and sets. When you do '
+                  'it, you log the reps for each set.',
+                  textAlign: TextAlign.center,
+                  style: text.bodyMedium?.copyWith(color: mutedColor(context)),
+                ),
+              )
+            else
+              for (final r in state.routines)
+                _WorkoutTile(routine: r, canStart: state.active == null),
+            if (state.active == null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  icon: const Icon(Icons.flash_on_rounded, size: 18),
+                  label: const Text('Quick workout'),
+                  onPressed: () async {
+                    await cubit.startEmptyWorkout();
+                    if (context.mounted) _openActive(context);
+                  },
                 ),
               ),
-            ),
-            if (state.routines.isNotEmpty) ...[
-              const SizedBox(height: Dimens.spacing8),
-              Text('Routines', style: text.titleMedium),
-              const SizedBox(height: Dimens.spacing8),
-              for (final r in state.routines)
-                _RoutineTile(routine: r, canStart: state.active == null),
-            ],
             const SizedBox(height: Dimens.spacing16),
             Text('History', style: text.titleMedium),
             const SizedBox(height: Dimens.spacing8),
             if (state.sessions.isEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: Dimens.spacing24),
+                padding: const EdgeInsets.symmetric(vertical: Dimens.spacing16),
                 child: Text(
-                  'No workouts yet. Start one and it will show up here.',
+                  'Finished workouts show up here.',
                   textAlign: TextAlign.center,
                   style: text.bodyMedium?.copyWith(color: mutedColor(context)),
                 ),
@@ -151,81 +126,35 @@ class _GymView extends StatelessWidget {
       },
     );
   }
+}
 
-  static DateTime _startOfWeek(DateTime d) =>
-      DateTime(d.year, d.month, d.day - (d.weekday - DateTime.monday));
-
-  /// Sets per muscle group this week, as thin bars scaled to the largest.
-  List<Widget> _muscleBalance(BuildContext context, List<WorkoutSession> week) {
-    final counts = setsPerMuscle(week);
-    if (counts.isEmpty) return const [];
-    final entries = counts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final max = entries.first.value;
-    return [
-      const SizedBox(height: Dimens.spacing16),
-      for (final e in entries.take(6))
-        Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 96,
-                child: Text(
-                  e.key.label,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: e.value / max,
-                    minHeight: 8,
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: 32,
-                child: Text(
-                  '${e.value}',
-                  textAlign: TextAlign.end,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-            ],
-          ),
-        ),
-    ];
+Future<void> _reorderWorkouts(
+  BuildContext context,
+  List<Routine> routines,
+) async {
+  final cubit = context.read<GymCubit>();
+  final order = await showReorderSheet(
+    context,
+    title: 'Reorder workouts',
+    items: [for (final r in routines) r.name],
+  );
+  if (order != null) {
+    await cubit.reorderRoutines([for (final i in order) routines[i]]);
   }
+}
 
-  Widget _stat(BuildContext context, String label, String value) => SizedBox(
-    width: 100,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(value, style: Theme.of(context).textTheme.titleLarge),
-        Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: mutedColor(context)),
-        ),
-      ],
+void _openEditor(BuildContext context, {Routine? existing}) {
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => WorkoutEditorScreen(existing: existing),
     ),
   );
 }
 
 void _openActive(BuildContext context) {
-  final cubit = context.read<GymCubit>();
-  Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => BlocProvider<GymCubit>.value(
-        value: cubit,
-        child: const ActiveWorkoutScreen(),
-      ),
-    ),
-  );
+  Navigator.of(
+    context,
+  ).push(MaterialPageRoute<void>(builder: (_) => const ActiveWorkoutScreen()));
 }
 
 class _ActiveCard extends StatelessWidget {
@@ -235,30 +164,33 @@ class _ActiveCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final done = session.exercises.fold<int>(
+    // Skipped exercises are left out of the count.
+    final counted = session.exercises.where((e) => !e.skipped);
+    final done = counted.fold<int>(
       0,
       (n, e) => n + e.sets.where((s) => s.done).length,
     );
+    final total = counted.fold<int>(0, (n, e) => n + e.sets.length);
     return AppCard(
       color: scheme.primaryContainer,
       onTap: () => _openActive(context),
       padding: const EdgeInsets.all(Dimens.spacing20),
       child: Row(
         children: [
-          Icon(Icons.timer_outlined, color: scheme.onPrimaryContainer),
+          Icon(Icons.fitness_center_rounded, color: scheme.onPrimaryContainer),
           const SizedBox(width: Dimens.spacing16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Workout in progress',
+                  'In progress',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: scheme.onPrimaryContainer,
                   ),
                 ),
                 Text(
-                  '${session.name} · $done sets done',
+                  '${session.name} · $done of $total sets done',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: scheme.onPrimaryContainer,
                   ),
@@ -276,50 +208,70 @@ class _ActiveCard extends StatelessWidget {
   }
 }
 
-class _RoutineTile extends StatelessWidget {
+class _WorkoutTile extends StatelessWidget {
   final Routine routine;
   final bool canStart;
-  const _RoutineTile({required this.routine, required this.canStart});
+  const _WorkoutTile({required this.routine, required this.canStart});
 
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<GymCubit>();
-    final names = routine.exercises.map((e) => e.name).join(', ');
+    final text = Theme.of(context).textTheme;
+    final sets = routine.exercises.fold<int>(0, (n, e) => n + e.sets.length);
     return Padding(
       padding: const EdgeInsets.only(bottom: Dimens.spacing8),
       child: AppCard(
-        padding: const EdgeInsets.all(Dimens.spacing16),
-        onTap: canStart
-            ? () async {
-                await cubit.startFromRoutine(routine);
-                if (context.mounted) _openActive(context);
-              }
-            : null,
+        // Tapping the workout opens it: starts it, or goes back to the one
+        // already in progress.
+        onTap: () async {
+          if (canStart) await cubit.startFromRoutine(routine);
+          if (context.mounted) _openActive(context);
+        },
+        padding: const EdgeInsets.fromLTRB(
+          Dimens.spacing16,
+          Dimens.spacing12,
+          Dimens.spacing4,
+          Dimens.spacing12,
+        ),
         child: Row(
           children: [
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text(routine.name, style: text.titleSmall),
+                  const SizedBox(height: 2),
                   Text(
-                    routine.name,
-                    style: Theme.of(context).textTheme.titleSmall,
+                    '${routine.exercises.length} exercises · $sets sets',
+                    style: text.bodySmall?.copyWith(color: mutedColor(context)),
                   ),
                   Text(
-                    names.isEmpty ? 'No exercises' : names,
-                    maxLines: 2,
+                    routine.exercises.map((e) => e.name).join(', '),
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: mutedColor(context),
-                    ),
+                    style: text.bodySmall?.copyWith(color: mutedColor(context)),
                   ),
                 ],
               ),
             ),
-            IconButton(
-              tooltip: 'Delete routine',
-              icon: const Icon(Icons.delete_outline_rounded),
-              onPressed: () => cubit.deleteRoutine(routine.id),
+            FilledButton.tonal(
+              onPressed: canStart
+                  ? () async {
+                      await cubit.startFromRoutine(routine);
+                      if (context.mounted) _openActive(context);
+                    }
+                  : null,
+              child: const Text('Start'),
+            ),
+            PopupMenuButton<String>(
+              onSelected: (v) {
+                if (v == 'edit') _openEditor(context, existing: routine);
+                if (v == 'delete') cubit.deleteRoutine(routine.id);
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'edit', child: Text('Edit')),
+                PopupMenuItem(value: 'delete', child: Text('Delete')),
+              ],
             ),
           ],
         ),
@@ -342,10 +294,7 @@ class _SessionTile extends StatelessWidget {
         padding: const EdgeInsets.all(Dimens.spacing16),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (_) => BlocProvider<GymCubit>.value(
-              value: context.read<GymCubit>(),
-              child: SessionDetailScreen(session: session),
-            ),
+            builder: (_) => SessionDetailScreen(session: session),
           ),
         ),
         child: Column(
@@ -362,12 +311,11 @@ class _SessionTile extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              '${formatDuration(session.duration)} · '
-              '${volumeText(sessionVolume(session), useLb)} · '
-              '${sessionSetCount(session)} sets',
+              // Volume is kg moved; plate-only workouts have none to show.
+              '${sessionSetCount(session)} sets'
+              '${sessionVolume(session) > 0 ? ' · ${volumeText(sessionVolume(session), useLb)}' : ''}',
               style: text.bodySmall?.copyWith(color: mutedColor(context)),
             ),
-            const SizedBox(height: 2),
             Text(
               session.exercises.map((e) => e.name).join(', '),
               maxLines: 1,
@@ -379,4 +327,97 @@ class _SessionTile extends StatelessWidget {
       ),
     );
   }
+}
+
+/// This week's totals and how the sets were spread over muscle groups.
+class _WeekCard extends StatelessWidget {
+  final List<WorkoutSession> sessions;
+  const _WeekCard({required this.sessions});
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final now = DateTime.now();
+    final weekStart = DateTime(
+      now.year,
+      now.month,
+      now.day - (now.weekday - DateTime.monday),
+    );
+    final week = [
+      for (final s in sessions)
+        if (!s.startedAt.isBefore(weekStart)) s,
+    ];
+    final counts = setsPerMuscle(week).entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return AppCard(
+      padding: const EdgeInsets.all(Dimens.spacing20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('This week', style: text.titleMedium),
+          const SizedBox(height: Dimens.spacing12),
+          Wrap(
+            spacing: Dimens.spacing24,
+            runSpacing: Dimens.spacing12,
+            children: [
+              _stat(context, 'Workouts', '${week.length}'),
+              _stat(
+                context,
+                'Sets',
+                '${week.fold(0, (n, s) => n + sessionSetCount(s))}',
+              ),
+            ],
+          ),
+          if (counts.isNotEmpty) ...[
+            const SizedBox(height: Dimens.spacing16),
+            for (final e in counts.take(6))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 96,
+                      child: Text(e.key.label, style: text.bodySmall),
+                    ),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: LinearProgressIndicator(
+                          value: e.value / counts.first.value,
+                          minHeight: 8,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 32,
+                      child: Text(
+                        '${e.value}',
+                        textAlign: TextAlign.end,
+                        style: text.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _stat(BuildContext context, String label, String value) => SizedBox(
+    width: 100,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(value, style: Theme.of(context).textTheme.titleLarge),
+        Text(
+          label,
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: mutedColor(context)),
+        ),
+      ],
+    ),
+  );
 }

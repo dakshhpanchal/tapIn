@@ -5,6 +5,7 @@ import 'package:opennutritracker/core/domain/usecase/get_config_usecase.dart';
 import 'package:opennutritracker/features/gym/data/gym_repository.dart';
 import 'package:opennutritracker/features/gym/domain/gym_calc.dart';
 import 'package:opennutritracker/features/gym/domain/gym_models.dart';
+import 'package:opennutritracker/features/gym/domain/gym_transfer.dart';
 import 'package:uuid/uuid.dart';
 
 class GymState extends Equatable {
@@ -88,10 +89,8 @@ class GymCubit extends Cubit<GymState> {
 
   Future<void> startEmptyWorkout() => _start('Workout', const []);
 
-  Future<void> startFromRoutine(Routine routine) => _start(
-    routine.name,
-    [for (final e in routine.exercises) _withHistory(e)],
-  );
+  Future<void> startFromRoutine(Routine routine) =>
+      _start(routine.name, [for (final e in routine.exercises) _forRoutine(e)]);
 
   Future<void> _start(String name, List<WorkoutExercise> exercises) async {
     if (state.active != null) return;
@@ -105,29 +104,66 @@ class GymCubit extends Cubit<GymState> {
     emit(state.copyWith(active: session));
   }
 
-  /// [template] with its sets replaced by what was done last time (as new,
-  /// unfinished sets) when there is history, otherwise its own sets, or one
-  /// empty set.
+  /// A routine exercise as it starts a workout: as many sets as planned, each
+  /// prefilled with what was done in the same set last time (not yet done).
+  WorkoutExercise _forRoutine(WorkoutExercise template) {
+    final planned = template.sets.isEmpty ? 1 : template.sets.length;
+    final last = lastPerformance(state.sessions, template.exerciseId);
+    final earlier = last == null
+        ? const <SetEntry>[]
+        : [
+            for (final s in last.sets)
+              if (!s.warmup) s,
+          ];
+    return template.copyWith(
+      // The machine setup usually stays the same, so it carries over; the
+      // note was for this session, and the screen shows it from last time.
+      setting: last?.setting ?? template.setting,
+      note: '',
+      sets: [
+        for (var i = 0; i < planned; i++)
+          if (earlier.isNotEmpty)
+            SetEntry(
+              weightKg:
+                  earlier[i < earlier.length ? i : earlier.length - 1].weightKg,
+              reps: earlier[i < earlier.length ? i : earlier.length - 1].reps,
+            )
+          else if (i < template.sets.length)
+            SetEntry(
+              weightKg: template.sets[i].weightKg,
+              reps: template.sets[i].reps,
+            )
+          else
+            const SetEntry(),
+      ],
+    );
+  }
+
+  /// An exercise added while working out: starts with what was done last
+  /// time, or one empty set.
   WorkoutExercise _withHistory(WorkoutExercise template) {
     final last = lastPerformance(state.sessions, template.exerciseId);
     final source = last == null
-        ? template.sets
+        ? const <SetEntry>[]
         : [
-            for (final s in last.sets.where((s) => !s.warmup))
-              SetEntry(weightKg: s.weightKg, reps: s.reps),
+            for (final s in last.sets)
+              if (!s.warmup) s,
           ];
     return template.copyWith(
+      setting: last?.setting ?? '',
+      note: '',
       sets: source.isEmpty
           ? const [SetEntry()]
-          : [for (final s in source) s.copyWith(done: false)],
+          : [
+              for (final s in source)
+                SetEntry(weightKg: s.weightKg, reps: s.reps),
+            ],
     );
   }
 
   // Editing the workout in progress -------------------------------------------
 
-  Future<void> _update(
-    WorkoutSession Function(WorkoutSession s) change,
-  ) async {
+  Future<void> _update(WorkoutSession Function(WorkoutSession s) change) async {
     final current = state.active;
     if (current == null) return;
     final next = change(current);
@@ -147,9 +183,8 @@ class GymCubit extends Cubit<GymState> {
     ),
   );
 
-  Future<void> removeExercise(int index) => _update(
-    (s) => s.copyWith(exercises: [...s.exercises]..removeAt(index)),
-  );
+  Future<void> removeExercise(int index) =>
+      _update((s) => s.copyWith(exercises: [...s.exercises]..removeAt(index)));
 
   Future<void> _updateExercise(
     int index,
@@ -168,11 +203,10 @@ class GymCubit extends Cubit<GymState> {
     return e.copyWith(sets: [...e.sets, seed]);
   });
 
-  Future<void> removeSet(int exerciseIndex, int setIndex) =>
-      _updateExercise(
-        exerciseIndex,
-        (e) => e.copyWith(sets: [...e.sets]..removeAt(setIndex)),
-      );
+  Future<void> removeSet(int exerciseIndex, int setIndex) => _updateExercise(
+    exerciseIndex,
+    (e) => e.copyWith(sets: [...e.sets]..removeAt(setIndex)),
+  );
 
   Future<void> updateSet(
     int exerciseIndex,
@@ -187,6 +221,14 @@ class GymCubit extends Cubit<GymState> {
   Future<void> setExerciseNote(int exerciseIndex, String note) =>
       _updateExercise(exerciseIndex, (e) => e.copyWith(note: note));
 
+  /// Skips an exercise for today (or brings it back). It stays in the list so
+  /// it can be undone, and is left out of the finished workout.
+  Future<void> setExerciseSkipped(int exerciseIndex, bool skipped) =>
+      _updateExercise(exerciseIndex, (e) => e.copyWith(skipped: skipped));
+
+  Future<void> setExerciseSetting(int exerciseIndex, String setting) =>
+      _updateExercise(exerciseIndex, (e) => e.copyWith(setting: setting));
+
   // Ending the workout ------------------------------------------------------
 
   /// Finishes the workout: drops sets that were never done, saves it to
@@ -199,8 +241,13 @@ class GymCubit extends Cubit<GymState> {
       endedAt: DateTime.now(),
       exercises: [
         for (final e in current.exercises)
-          if (e.sets.any((s) => s.done))
-            e.copyWith(sets: [for (final s in e.sets) if (s.done) s]),
+          if (!e.skipped && e.sets.any((s) => s.done))
+            e.copyWith(
+              sets: [
+                for (final s in e.sets)
+                  if (s.done) s,
+              ],
+            ),
       ],
     );
     await _repo.clearActiveSession();
@@ -230,7 +277,9 @@ class GymCubit extends Cubit<GymState> {
   Future<void> deleteSession(String id) async {
     await _repo.deleteSession(id);
     emit(
-      state.copyWith(sessions: [...state.sessions]..removeWhere((s) => s.id == id)),
+      state.copyWith(
+        sessions: [...state.sessions]..removeWhere((s) => s.id == id),
+      ),
     );
   }
 
@@ -238,9 +287,12 @@ class GymCubit extends Cubit<GymState> {
     final routine = Routine(
       id: _uuid.v4(),
       name: name,
+      order: _nextRoutineOrder(),
       exercises: [
         for (final e in session.exercises)
           e.copyWith(
+            note: '',
+            setting: '',
             sets: [
               for (final s in e.sets.where((s) => !s.warmup))
                 SetEntry(weightKg: s.weightKg, reps: s.reps),
@@ -252,26 +304,120 @@ class GymCubit extends Cubit<GymState> {
     emit(state.copyWith(routines: _repo.getRoutines()));
   }
 
+  /// Creates or (when [id] is given) updates a planned workout.
+  Future<void> saveRoutine({
+    String? id,
+    required String name,
+    required List<WorkoutExercise> exercises,
+  }) async {
+    final existing = state.routines.where((r) => r.id == id).firstOrNull;
+    await _repo.saveRoutine(
+      Routine(
+        id: id ?? _uuid.v4(),
+        name: name,
+        exercises: exercises,
+        order: existing?.order ?? _nextRoutineOrder(),
+      ),
+    );
+    emit(state.copyWith(routines: _repo.getRoutines()));
+  }
+
+  int _nextRoutineOrder() => state.routines.isEmpty
+      ? 0
+      : state.routines.map((r) => r.order).reduce((a, b) => a > b ? a : b) + 1;
+
+  /// Saves the workouts in the given order (first = top of the list).
+  Future<void> reorderRoutines(List<Routine> ordered) async {
+    for (var i = 0; i < ordered.length; i++) {
+      await _repo.saveRoutine(ordered[i].copyWith(order: i));
+    }
+    emit(state.copyWith(routines: _repo.getRoutines()));
+  }
+
+  /// Reorders the exercises of the workout in progress. [order] lists the
+  /// current indexes in their new order.
+  Future<void> reorderExercises(List<int> order) => _update(
+    (s) => s.copyWith(exercises: [for (final i in order) s.exercises[i]]),
+  );
+
   Future<void> deleteRoutine(String id) async {
     await _repo.deleteRoutine(id);
     emit(state.copyWith(routines: _repo.getRoutines()));
   }
 
-  Future<Exercise> createExercise({
-    required String name,
-    required MuscleGroup muscle,
-    required ExerciseKind kind,
+  Future<Exercise> createExercise(
+    String name, {
+    MuscleGroup muscle = MuscleGroup.fullBody,
+    bool plates = false,
   }) async {
     final exercise = Exercise(
       id: _uuid.v4(),
       name: name.trim(),
       muscle: muscle,
-      kind: kind,
+      plates: plates,
       isCustom: true,
     );
     await _repo.saveExercise(exercise);
     emit(state.copyWith(exercises: await _repo.getExercises()));
     return exercise;
+  }
+
+  /// Everything as one JSON file's text; see `gym_transfer.dart`.
+  String exportJson() => exportGymJson(
+    exercises: state.exercises,
+    routines: state.routines,
+    sessions: state.sessions,
+  );
+
+  /// Merges an import file into what is stored. Throws [GymImportException]
+  /// when the file is not a workouts file; otherwise returns what happened.
+  Future<GymImportPlan> importJson(String raw) async {
+    final plan = parseGymImport(
+      raw,
+      exercises: state.exercises,
+      routines: state.routines,
+      sessions: state.sessions,
+      newId: _uuid.v4,
+    );
+    for (final e in [...plan.newExercises, ...plan.updatedExercises]) {
+      await _repo.saveExercise(e);
+    }
+    for (final r in plan.workouts) {
+      await _repo.saveRoutine(r);
+    }
+    for (final s in plan.sessions) {
+      await _repo.saveSession(s);
+    }
+    emit(
+      state.copyWith(
+        exercises: await _repo.getExercises(),
+        routines: _repo.getRoutines(),
+        sessions: _repo.getSessions(),
+      ),
+    );
+    return plan;
+  }
+
+  /// Renames an exercise or changes its muscle group or plates setting.
+  /// Logged workouts keep the values they were logged with.
+  Future<void> updateExercise(
+    Exercise e, {
+    required String name,
+    required MuscleGroup muscle,
+    required bool plates,
+  }) async {
+    await _repo.saveExercise(
+      Exercise(
+        id: e.id,
+        name: name.trim(),
+        muscle: muscle,
+        kind: e.kind,
+        equipment: e.equipment,
+        isCustom: e.isCustom,
+        plates: plates,
+      ),
+    );
+    emit(state.copyWith(exercises: await _repo.getExercises()));
   }
 
   Future<void> deleteExercise(String id) async {

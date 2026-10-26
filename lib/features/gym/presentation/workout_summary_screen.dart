@@ -45,11 +45,12 @@ class WorkoutSummaryScreen extends StatelessWidget {
                   runSpacing: Dimens.spacing12,
                   children: [
                     _stat(context, 'Time', formatDuration(session.duration)),
-                    _stat(
-                      context,
-                      'Volume',
-                      volumeText(sessionVolume(session), useLb),
-                    ),
+                    if (sessionVolume(session) > 0)
+                      _stat(
+                        context,
+                        'Volume',
+                        volumeText(sessionVolume(session), useLb),
+                      ),
                     _stat(context, 'Sets', '${sessionSetCount(session)}'),
                     _stat(context, 'Exercises', '${session.exercises.length}'),
                   ],
