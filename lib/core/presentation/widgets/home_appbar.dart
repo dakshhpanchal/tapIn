@@ -9,24 +9,12 @@ class HomeAppbar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      title: Row(
-        children: [
-          const SizedBox(width: 30, height: 34, child: DynamicTapInLogo()),
-          const SizedBox(width: 10),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                text: S.of(context).appTitle,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
+      // The logo sits in the leading slot so the title starts at the same
+      // place as on the other tabs, and uses the same text style.
+      leading: const Center(
+        child: SizedBox(width: 30, height: 34, child: DynamicTapInLogo()),
       ),
+      title: Text(S.of(context).appTitle),
       actions: [
         Semantics(
           identifier: 'home-my-foods',

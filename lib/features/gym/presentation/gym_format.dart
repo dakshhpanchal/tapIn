@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:opennutritracker/core/styles/app_palette.dart';
 import 'package:opennutritracker/features/gym/domain/gym_calc.dart';
 
 /// Weight is stored in kg; these convert to and from the unit on screen.
@@ -48,38 +50,24 @@ String formatClock(Duration d) {
 
 /// Volume with a thousands separator: "12,450".
 String volumeText(double kg, bool useLb) {
-  final v = toDisplayWeight(kg, useLb).round().toString();
-  final buf = StringBuffer();
-  for (var i = 0; i < v.length; i++) {
-    if (i > 0 && (v.length - i) % 3 == 0) buf.write(',');
-    buf.write(v[i]);
-  }
-  return '$buf ${weightUnitLabel(useLb)}';
+  final v = NumberFormat.decimalPattern().format(
+    toDisplayWeight(kg, useLb).round(),
+  );
+  return '$v ${weightUnitLabel(useLb)}';
 }
 
-/// "18:05".
-String timeText(DateTime d) =>
-    '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+/// The time of day in the user's own clock style (24 or 12 hour).
+String timeText(DateTime d) => DateFormat.jm().format(d);
 
-const _months = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-String dateText(DateTime d) =>
-    '${_weekdays[d.weekday - 1]}, ${d.day} ${_months[d.month - 1]}';
+/// "Mon, 5 Oct", with the year added for dates outside the current year.
+String dateText(DateTime d) {
+  final sameYear = d.year == DateTime.now().year;
+  return (sameYear ? DateFormat.MMMEd() : DateFormat.yMMMEd()).format(d);
+}
 
 /// Text colour for secondary labels, following the theme.
 Color mutedColor(BuildContext context) =>
-    Theme.of(context).colorScheme.onSurfaceVariant;
+    (Theme.of(context).brightness == Brightness.dark
+            ? AppPalette.dark
+            : AppPalette.light)
+        .textMuted;

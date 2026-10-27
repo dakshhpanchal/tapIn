@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:opennutritracker/core/domain/entity/app_theme_entity.dart';
@@ -26,7 +27,6 @@ import 'package:opennutritracker/core/utils/notification_service.dart';
 import 'package:opennutritracker/core/utils/locale_provider.dart';
 import 'package:opennutritracker/core/utils/reload_diary_and_trends.dart';
 import 'package:opennutritracker/core/utils/theme_mode_provider.dart';
-import 'package:opennutritracker/core/utils/url_const.dart';
 import 'package:opennutritracker/features/diary/presentation/bloc/calendar_day_bloc.dart';
 import 'package:opennutritracker/features/diary/presentation/bloc/diary_bloc.dart';
 import 'package:opennutritracker/features/home/presentation/bloc/home_bloc.dart';
@@ -436,7 +436,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                   onChanged: (dark) => _setDarkMode(context, dark),
                 ),
-                _SettingsSwitchTile(
+                // Wallpaper colours exist only on Android.
+                if (defaultTargetPlatform == TargetPlatform.android)
+                  _SettingsSwitchTile(
                   identifier: 'settings-material-you',
                   palette: palette,
                   icon: Icons.wallpaper_rounded,
@@ -479,7 +481,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _categoryHeader(
               context,
               palette,
-              S.of(context).settingsNotificationsLabel,
+              S.of(context).settingsRemindersHeader,
             ),
             _SettingsGroup(
               palette: palette,
@@ -1332,12 +1334,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _reportError(BuildContext context) async {
-    final reportUri = Uri.parse(
-      "mailto:${AppConst.reportErrorEmail}?subject=Report_Error",
-    );
+    // Reports go to tapIn's own issue tracker, not to the upstream project.
+    final reportUri = Uri.parse("${AppConst.sourceCodeUrl}/issues/new");
 
     if (await canLaunchUrl(reportUri)) {
-      launchUrl(reportUri);
+      launchUrl(reportUri, mode: LaunchMode.externalApplication);
     } else {
       // Cannot open email app, show error snackbar
       if (context.mounted) {
@@ -1447,18 +1448,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-          TextButton(
-            onPressed: () {
-              _launchPrivacyPolicyUrl(context);
-            },
-            child: Row(
-              children: [
-                const Icon(Icons.policy_outlined),
-                const SizedBox(width: 8.0),
-                Text(S.of(context).privacyPolicyLabel),
-              ],
-            ),
-          ),
         ],
       );
     }
@@ -1467,13 +1456,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _launchSourceCodeUrl(BuildContext context) async {
     final sourceCodeUri = Uri.parse(AppConst.sourceCodeUrl);
     _launchUrl(context, sourceCodeUri);
-  }
-
-  void _launchPrivacyPolicyUrl(BuildContext context) async {
-    final privacyPolicyUri = Uri.parse(
-      URLConst.privacyPolicyFor(Localizations.localeOf(context).languageCode),
-    );
-    _launchUrl(context, privacyPolicyUri);
   }
 
   void _launchUrl(BuildContext context, Uri url) async {
@@ -1538,7 +1520,7 @@ class _AccentTrailingSwatch extends StatelessWidget {
     }
     final color = accentColor != null
         ? Color(accentColor!)
-        : const Color(0xFF43A047); // default green disc preview
+        : AppPalette.baseLight.accent; // the default accent
     return Container(
       width: 24,
       height: 24,

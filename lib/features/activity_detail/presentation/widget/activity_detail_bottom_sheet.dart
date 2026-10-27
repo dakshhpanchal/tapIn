@@ -1,3 +1,4 @@
+import 'package:opennutritracker/core/presentation/widgets/app_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:opennutritracker/core/domain/entity/custom_activity_template_entity.dart';
@@ -80,7 +81,7 @@ class _ActivityDetailBottomSheetState extends State<ActivityDetailBottomSheet> {
         await widget.activityDetailBloc.loadCustomActivityTemplates();
     if (!mounted) return;
 
-    final picked = await showModalBottomSheet<CustomActivityTemplateEntity>(
+    final picked = await showAppSheet<CustomActivityTemplateEntity>(
       context: context,
       isScrollControlled: true,
       builder: (sheetContext) {

@@ -1,3 +1,4 @@
+import 'package:opennutritracker/core/presentation/widgets/app_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:opennutritracker/core/domain/entity/intake_entity.dart';
 import 'package:opennutritracker/core/domain/entity/profile_entity.dart';
@@ -23,7 +24,7 @@ Future<void> showCopyToProfileSheet(
 
   final messenger = ScaffoldMessenger.of(context);
   final copiedSnackbar = S.of(context).copiedToProfileSnackbar;
-  final copied = await showModalBottomSheet<bool>(
+  final copied = await showAppSheet<bool>(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,

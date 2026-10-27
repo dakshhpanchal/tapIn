@@ -142,7 +142,7 @@ class _OffContributionScreenState extends State<OffContributionScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Publish on Open Food Facts?'),
+        title: const Text('Send to Open Food Facts?'),
         content: Text(
           '“${product.name}” will be public, under the username '
           '${credentials.username}, and licensed as open data. This cannot be '
@@ -182,7 +182,7 @@ class _OffContributionScreenState extends State<OffContributionScreen> {
       );
       Navigator.of(context).pop(true);
     } on OffLoginRejectedException {
-      _fail('Open Food Facts rejected your login. Log in again in Settings.');
+      _fail('Open Food Facts rejected your login. Log in again in Settings > Data.');
     } on OffUnavailableException {
       _fail('Open Food Facts is busy right now. Try again in a minute.');
     } on OffContributionException catch (e) {
@@ -230,7 +230,7 @@ class _OffContributionScreenState extends State<OffContributionScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.isCorrection ? 'Correct on Open Food Facts' : 'Share product',
+          widget.isCorrection ? 'Correct on Open Food Facts' : 'Share on Open Food Facts',
         ),
       ),
       body: Form(

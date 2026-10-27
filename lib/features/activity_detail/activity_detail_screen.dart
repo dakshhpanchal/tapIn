@@ -77,8 +77,10 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final palette = isDark ? AppPalette.dark : AppPalette.light;
-    return SafeArea(
-      child: Scaffold(
+    return ColoredBox(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: SafeArea(
+        child: Scaffold(
         backgroundColor: palette.canvas,
         body: BlocBuilder<ActivityDetailBloc, ActivityDetailState>(
           bloc: _activityDetailBloc,
@@ -101,7 +103,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
           activityEntity: activityEntity,
           activityDetailBloc: _activityDetailBloc,
         ),
-      ),
+      )),
     );
   }
 

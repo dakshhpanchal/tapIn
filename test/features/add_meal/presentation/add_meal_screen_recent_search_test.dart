@@ -1,3 +1,4 @@
+import 'package:opennutritracker/core/utils/food_backend.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -171,6 +172,9 @@ Widget _app() => MaterialApp(
 Finder _searchAll() => find.text(l10nEn.noResultsSearchAll);
 
 void main() {
+  setUp(() => foodBackendOverride = true);
+  tearDown(() => foodBackendOverride = null);
+
   group('RecentMealBloc search-as-you-type', () {
     test('keystrokes filter the loaded history without re-reading storage',
         () async {

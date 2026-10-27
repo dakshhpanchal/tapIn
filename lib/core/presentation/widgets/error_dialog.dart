@@ -17,6 +17,17 @@ class ErrorDialog extends StatelessWidget {
   final VoidCallback? onSecondaryPressed;
   final String? secondaryIdentifier;
 
+  /// A smaller line under [errorText], for a hint that should not read as a
+  /// heading.
+  final String? subtitle;
+
+  /// Defaults to the "offline" cloud; a missing item is not an outage.
+  final IconData icon;
+
+  /// Makes the second action the main one and Retry the quiet one, for the
+  /// states where retrying the same request is rarely what the user wants.
+  final bool emphasizeSecondary;
+
   const ErrorDialog({
     super.key,
     required this.errorText,
@@ -25,6 +36,9 @@ class ErrorDialog extends StatelessWidget {
     this.secondaryLabel,
     this.onSecondaryPressed,
     this.secondaryIdentifier,
+    this.subtitle,
+    this.icon = Icons.cloud_off_rounded,
+    this.emphasizeSecondary = false,
   });
 
   @override
@@ -42,7 +56,7 @@ class ErrorDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(Icons.cloud_off_rounded, size: 64, color: palette.textMuted),
+          Icon(icon, size: 64, color: palette.textMuted),
           const SizedBox(height: Dimens.spacing16),
           SizedBox(
             width: double.infinity,
@@ -52,28 +66,58 @@ class ErrorDialog extends StatelessWidget {
               style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
+          if (subtitle != null) ...[
+            const SizedBox(height: Dimens.spacing8),
+            SizedBox(
+              width: double.infinity,
+              child: Text(
+                subtitle!,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: palette.textMuted,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: Dimens.spacing16),
-          Semantics(
-            identifier: retryIdentifier,
-            child: FilledButton.icon(
+          ..._buttons(context),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buttons(BuildContext context) {
+    final hasSecondary = secondaryLabel != null && onSecondaryPressed != null;
+    final retry = Semantics(
+      identifier: retryIdentifier,
+      child: (hasSecondary && emphasizeSecondary)
+          ? OutlinedButton.icon(
+              onPressed: () => onRefreshPressed(),
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text(S.of(context).retryLabel),
+            )
+          : FilledButton.icon(
               onPressed: () => onRefreshPressed(),
               icon: const Icon(Icons.refresh_rounded),
               label: Text(S.of(context).retryLabel),
             ),
-          ),
-          if (secondaryLabel != null && onSecondaryPressed != null) ...[
-            const SizedBox(height: Dimens.spacing8),
-            Semantics(
-              identifier: secondaryIdentifier,
-              child: OutlinedButton.icon(
-                onPressed: onSecondaryPressed,
-                icon: const Icon(Icons.add_rounded),
-                label: Text(secondaryLabel!),
-              ),
-            ),
-          ],
-        ],
-      ),
     );
+    if (!hasSecondary) return [retry];
+    final other = Semantics(
+      identifier: secondaryIdentifier,
+      child: emphasizeSecondary
+          ? FilledButton.icon(
+              onPressed: onSecondaryPressed,
+              icon: const Icon(Icons.add_rounded),
+              label: Text(secondaryLabel!),
+            )
+          : OutlinedButton.icon(
+              onPressed: onSecondaryPressed,
+              icon: const Icon(Icons.add_rounded),
+              label: Text(secondaryLabel!),
+            ),
+    );
+    const gap = SizedBox(height: Dimens.spacing8);
+    return emphasizeSecondary ? [other, gap, retry] : [retry, gap, other];
   }
 }

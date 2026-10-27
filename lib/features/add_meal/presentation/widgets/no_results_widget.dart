@@ -8,8 +8,17 @@ class NoResultsWidget extends StatelessWidget {
   final VoidCallback? onCreateCustomFood;
   final VoidCallback? onSearchAll;
 
+  /// Overrides the "no results" wording, for an empty list that is not the
+  /// outcome of a search.
+  final IconData? icon;
+  final String? title;
+  final String? subtitle;
+
   const NoResultsWidget({
     super.key,
+    this.icon,
+    this.title,
+    this.subtitle,
     this.onScanBarcode,
     this.onCreateCustomFood,
     this.onSearchAll,
@@ -24,9 +33,11 @@ class NoResultsWidget extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           EmptyHint(
-            icon: Icons.search_off_rounded,
-            title: S.of(context).noResultsFound,
-            subtitle: showActions ? S.of(context).noResultsSubtitle : null,
+            icon: icon ?? Icons.search_off_rounded,
+            title: title ?? S.of(context).noResultsFound,
+            subtitle:
+                subtitle ??
+                (showActions ? S.of(context).noResultsSubtitle : null),
           ),
           if (showActions)
             Padding(

@@ -1,3 +1,6 @@
+import 'package:opennutritracker/core/presentation/widgets/app_sheet.dart';
+import 'package:opennutritracker/core/utils/food_backend.dart';
+import 'package:opennutritracker/features/recipes/presentation/widgets/new_food_mode_switch.dart';
 import 'package:flutter/material.dart';
 import 'package:opennutritracker/core/presentation/widgets/empty_hint.dart';
 import 'package:opennutritracker/core/presentation/widgets/error_dialog.dart';
@@ -22,7 +25,6 @@ import 'package:opennutritracker/features/add_meal/presentation/widgets/partial_
 import 'package:opennutritracker/features/add_meal/presentation/widgets/quick_add_bottom_sheet.dart';
 import 'package:opennutritracker/features/add_meal/presentation/bloc/products_bloc.dart';
 import 'package:opennutritracker/features/add_meal/util/meal_relevance_ranker.dart';
-import 'package:opennutritracker/features/edit_meal/presentation/edit_meal_screen.dart';
 import 'package:opennutritracker/features/scanner/scanner_screen.dart';
 import 'package:opennutritracker/features/scanner/util/barcode_check_digit.dart';
 import 'package:opennutritracker/generated/l10n.dart';
@@ -121,6 +123,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
                       child: IconButton(
                         onPressed: () =>
                             _onCustomAddButtonPressed(state.usesImperialUnits),
+                        tooltip: S.of(context).newFoodLabel,
                         icon: const Icon(Icons.add_circle_outline),
                       ),
                     ),
@@ -209,7 +212,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
   bool _searchesProducts(_SearchSource s) =>
       s == _SearchSource.all || s == _SearchSource.products;
   bool _searchesFood(_SearchSource s) =>
-      s == _SearchSource.all || s == _SearchSource.food;
+      hasFoodBackend && (s == _SearchSource.all || s == _SearchSource.food);
 
   void _onSearchSubmit(String inputText) {
     final trimmed = inputText.trim();
@@ -316,7 +319,8 @@ class _AddMealScreenState extends State<AddMealScreen> {
             ),
             chip(_SearchSource.all, S.of(context).allItemsLabel),
             chip(_SearchSource.products, S.of(context).searchProductsPage),
-            chip(_SearchSource.food, S.of(context).searchFoodPage),
+            if (hasFoodBackend)
+              chip(_SearchSource.food, S.of(context).searchFoodPage),
           ],
         ),
       ),
@@ -349,6 +353,8 @@ class _AddMealScreenState extends State<AddMealScreen> {
   }
 
   static bool _foodPending(FoodState state, String query) {
+    // Never searched without a backend, so there is nothing to wait for.
+    if (!hasFoodBackend) return false;
     if (state is FoodLoadingState) return true;
     if (query.trim().length < minQueryLength) return false;
     if (state is FoodInitial) return true;
@@ -660,9 +666,13 @@ class _AddMealScreenState extends State<AddMealScreen> {
                 );
               }
               if (query.trim().isEmpty) {
-                return EmptyHint(
+                return NoResultsWidget(
                   icon: Icons.history_rounded,
                   title: S.of(context).noMealsRecentlyAddedLabel,
+                  subtitle: S.of(context).recentEmptyHint,
+                  onScanBarcode: _onBarcodeIconPressed,
+                  onCreateCustomFood: () =>
+                      _onCustomAddButtonPressed(state.usesImperialUnits),
                 );
               }
               return NoResultsWidget(
@@ -759,7 +769,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
   }
 
   void _onQuickAddPressed() {
-    showModalBottomSheet<void>(
+    showAppSheet<void>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -768,40 +778,14 @@ class _AddMealScreenState extends State<AddMealScreen> {
     );
   }
 
+  /// Opens the New food form for this meal; saving it carries on to log it.
   void _onCustomAddButtonPressed(bool usesImperialUnits) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(S.of(context).createCustomDialogTitle),
-          content: Text(S.of(context).createCustomDialogContent),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(), // close dialog
-              child: Text(S.of(context).dialogCancelLabel),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                _openEditMealScreen(usesImperialUnits);
-              },
-              child: Text(S.of(context).buttonYesLabel),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _openEditMealScreen(bool usesImperialUnits) {
-    Navigator.of(context).pushNamed(
-      NavigationOptions.editMealRoute,
-      arguments: EditMealScreenArguments(
-        _day,
-        MealEntity.empty(),
-        _mealType.getIntakeType(),
-        usesImperialUnits,
-      ),
+    openNewFood(
+      context,
+      NewFoodMode.nutrition,
+      usesImperialUnits: usesImperialUnits,
+      day: _day,
+      intakeType: _mealType.getIntakeType(),
     );
   }
 }

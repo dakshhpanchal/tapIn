@@ -112,7 +112,7 @@ class _RecipesPageState extends State<RecipesPage> with WidgetsBindingObserver {
             onPressed: () async {
               await openNewFood(
                 context,
-                NewFoodMode.ingredients,
+                NewFoodMode.nutrition,
                 usesImperialUnits: _usesImperialUnits,
               );
               if (mounted) _reload();
@@ -483,7 +483,13 @@ class _RecipesPageState extends State<RecipesPage> with WidgetsBindingObserver {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(s.deleteSelectedRecipesConfirmTitle(count)),
-        content: Text(s.recipeDeleteConfirmContent),
+        // Deleting a saved food also removes its diary entries; deleting a
+        // recipe keeps them. Say the stronger one when both are selected.
+        content: Text(
+          _selectedKeys.any((k) => !k.startsWith('r:'))
+              ? s.customMealsDeleteConfirmContent
+              : s.recipeDeleteConfirmContent,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),

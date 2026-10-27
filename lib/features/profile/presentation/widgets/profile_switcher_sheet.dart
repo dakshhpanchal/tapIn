@@ -1,3 +1,4 @@
+import 'package:opennutritracker/core/presentation/widgets/app_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:opennutritracker/core/domain/usecase/create_profile_usecase.dart';
 import 'package:opennutritracker/core/domain/usecase/get_profiles_usecase.dart';
@@ -11,7 +12,7 @@ import 'package:opennutritracker/generated/l10n.dart';
 /// Bottom sheet that lists every profile, switches to the tapped one, and
 /// offers shortcuts to add a profile or open the management screen.
 Future<void> showProfileSwitcherSheet(BuildContext pageContext) async {
-  await showModalBottomSheet<void>(
+  await showAppSheet<void>(
     context: pageContext,
     showDragHandle: true,
     builder: (sheetContext) {

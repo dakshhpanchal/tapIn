@@ -1,3 +1,4 @@
+import 'package:opennutritracker/core/presentation/widgets/app_bar_save_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:opennutritracker/core/styles/dimens.dart';
@@ -100,10 +101,7 @@ class _WorkoutEditorScreenState extends State<WorkoutEditorScreen> {
             icon: const Icon(Icons.swap_vert_rounded),
             onPressed: _exercises.length < 2 ? null : _reorder,
           ),
-          TextButton(
-            onPressed: _canSave ? _save : null,
-            child: const Text('Save'),
-          ),
+          AppBarSaveButton(onPressed: _canSave ? _save : null),
         ],
       ),
       body: ListView(

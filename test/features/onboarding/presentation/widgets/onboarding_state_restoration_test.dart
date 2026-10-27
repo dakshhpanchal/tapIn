@@ -38,18 +38,17 @@ void main() {
       );
 
   group('OnboardingIntroPageBody restoration', () {
-    testWidgets('reflects initialAcceptedPolicy/DataCollection in checkboxes',
+    testWidgets('reflects initialAcceptedDataCollection in its checkbox',
         (tester) async {
       await tester.pumpWidget(wrap(OnboardingIntroPageBody(
         setPageContent: (_, _) {},
-        initialAcceptedPolicy: true,
         initialAcceptedDataCollection: true,
       )));
       await tester.pumpAndSettle();
 
       final boxes = tester.widgetList<Checkbox>(find.byType(Checkbox)).toList();
-      expect(boxes[0].value, isTrue);
-      expect(boxes[1].value, isTrue);
+      expect(boxes, hasLength(1)); // there is no policy checkbox any more
+      expect(boxes.single.value, isTrue);
     });
   });
 

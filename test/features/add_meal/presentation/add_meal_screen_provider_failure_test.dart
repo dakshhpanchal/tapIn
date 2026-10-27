@@ -7,6 +7,7 @@
 // blocs, and the real AddMealScreen. Only the repository, the local data
 // sources and the config are faked.
 
+import 'package:opennutritracker/core/utils/food_backend.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -221,6 +222,9 @@ Future<void> _search(WidgetTester tester, String query) async {
 }
 
 void main() {
+  setUp(() => foodBackendOverride = true);
+  tearDown(() => foodBackendOverride = null);
+
   group('Search blocs carry provider failures on the loaded state', () {
     test('a throwing OFF source loads, flagged as failed, not as empty',
         () async {

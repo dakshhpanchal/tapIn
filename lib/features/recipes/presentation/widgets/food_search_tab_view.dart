@@ -28,11 +28,15 @@ class FoodSearchTabView extends StatefulWidget {
   // taps are forwarded here. The recipe builder uses this to push the
   // scanner in pick mode and feed the result back through [onMealSelected].
   final VoidCallback? onBarcodePressed;
+  // When non-null, a "Create custom ingredient" button sits under the search
+  // bar for foods that are in none of the databases.
+  final VoidCallback? onCreateCustomPressed;
 
   const FoodSearchTabView({
     super.key,
     required this.onMealSelected,
     this.onBarcodePressed,
+    this.onCreateCustomPressed,
   });
 
   @override
@@ -78,7 +82,20 @@ class _FoodSearchTabViewState extends State<FoodSearchTabView>
             onSearchChanged: _onSearchChanged,
             onBarcodePressed: widget.onBarcodePressed,
           ),
-          const SizedBox(height: 16),
+          if (widget.onCreateCustomPressed != null)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Semantics(
+                identifier: 'recipe-ingredient-create-custom',
+                child: TextButton.icon(
+                  onPressed: widget.onCreateCustomPressed,
+                  icon: const Icon(Icons.add_rounded),
+                  label: Text(S.of(context).recipeCreateCustomIngredientLabel),
+                ),
+              ),
+            )
+          else
+            const SizedBox(height: 16),
           TabBar(
             tabs: [
               Tab(text: S.of(context).searchProductsPage),

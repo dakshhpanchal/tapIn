@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:opennutritracker/core/presentation/widgets/app_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:opennutritracker/core/domain/entity/intake_type_entity.dart';
@@ -226,7 +227,7 @@ class CustomMealsTab extends StatelessWidget {
         .toList();
     if (candidates.isEmpty) return;
 
-    final partner = await showModalBottomSheet<MealEntity>(
+    final partner = await showAppSheet<MealEntity>(
       context: context,
       builder: (ctx) {
         return Semantics(

@@ -1,3 +1,4 @@
+import 'package:opennutritracker/core/presentation/widgets/app_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:opennutritracker/core/styles/dimens.dart';
 
@@ -8,7 +9,7 @@ Future<List<int>?> showReorderSheet(
   required String title,
   required List<String> items,
 }) {
-  return showModalBottomSheet<List<int>>(
+  return showAppSheet<List<int>>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,

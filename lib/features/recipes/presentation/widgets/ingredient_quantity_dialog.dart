@@ -1,3 +1,4 @@
+import 'package:opennutritracker/core/presentation/widgets/app_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:opennutritracker/core/styles/app_palette.dart';
@@ -19,8 +20,9 @@ Future<IngredientQuantitySelection?> showIngredientQuantityDialog(
   double? initialAmount,
   String? initialUnit,
 }) {
-  return showModalBottomSheet<IngredientQuantitySelection>(
+  return showAppSheet<IngredientQuantitySelection>(
     context: context,
+    showDragHandle: false,
     isScrollControlled: true,
     builder: (ctx) => _IngredientQuantitySheet(
       meal: meal,
@@ -48,6 +50,7 @@ class _IngredientQuantitySheet extends StatefulWidget {
 
 class _IngredientQuantitySheetState extends State<_IngredientQuantitySheet> {
   late TextEditingController _amountController;
+  bool _amountInvalid = false;
   late String _unit;
 
   @override
@@ -105,10 +108,6 @@ class _IngredientQuantitySheetState extends State<_IngredientQuantitySheet> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final palette = isDark ? AppPalette.dark : AppPalette.light;
     final viewInsets = MediaQuery.of(context).viewInsets;
-    final fieldBorder = OutlineInputBorder(
-      borderRadius: Dimens.borderRadiusS,
-      borderSide: BorderSide(color: palette.border, width: Dimens.hairline),
-    );
     return Padding(
       padding: EdgeInsets.only(bottom: viewInsets.bottom),
       child: Container(
@@ -159,8 +158,9 @@ class _IngredientQuantitySheetState extends State<_IngredientQuantitySheet> {
                     ],
                     decoration: InputDecoration(
                       labelText: S.of(context).recipeIngredientAmountLabel,
-                      border: fieldBorder,
-                      enabledBorder: fieldBorder,
+                      errorText: _amountInvalid
+                          ? S.of(context).amountInvalidError
+                          : null,
                     ),
                   ),
                 ),
@@ -174,8 +174,6 @@ class _IngredientQuantitySheetState extends State<_IngredientQuantitySheet> {
                     borderRadius: Dimens.borderRadiusM,
                     decoration: InputDecoration(
                       labelText: S.of(context).recipeIngredientUnitLabel,
-                      border: fieldBorder,
-                      enabledBorder: fieldBorder,
                     ),
                     items: _unitItems(context),
                     onChanged: (value) {
@@ -196,7 +194,11 @@ class _IngredientQuantitySheetState extends State<_IngredientQuantitySheet> {
                   shape: Dimens.shapeM,
                 ),
                 onPressed: _onConfirm,
-                child: Text(S.of(context).addLabel),
+                child: Text(
+                  widget.initialAmount == null
+                      ? S.of(context).addLabel
+                      : S.of(context).buttonSaveLabel,
+                ),
               ),
             ),
             const SizedBox(height: Dimens.spacing8),
@@ -210,7 +212,8 @@ class _IngredientQuantitySheetState extends State<_IngredientQuantitySheet> {
     final raw = _amountController.text.replaceAll(',', '.');
     final amount = double.tryParse(raw);
     if (amount == null || amount <= 0) {
-      Navigator.of(context).pop();
+      // Say what is wrong instead of closing the sheet with nothing added.
+      setState(() => _amountInvalid = true);
       return;
     }
     Navigator.of(context).pop(

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:opennutritracker/core/presentation/widgets/confirm_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -375,9 +376,23 @@ class _ExerciseCard extends StatelessWidget {
                 ),
                 PopupMenuButton<String>(
                   tooltip: 'Exercise options',
-                  onSelected: (v) => v == 'skip'
-                      ? cubit.setExerciseSkipped(index, true)
-                      : cubit.removeExercise(index),
+                  onSelected: (v) async {
+                    if (v == 'skip') {
+                      cubit.setExerciseSkipped(index, true);
+                      return;
+                    }
+                    final hasLogged = exercise.sets.any((x) => x.done);
+                    final ok =
+                        !hasLogged ||
+                        await showConfirmDialog(
+                          context,
+                          title: 'Remove ${exercise.name}?',
+                          content: 'Its logged sets are removed from this workout.',
+                          confirmLabel: 'Remove',
+                          destructive: true,
+                        );
+                    if (ok) cubit.removeExercise(index);
+                  },
                   itemBuilder: (_) => const [
                     PopupMenuItem(value: 'skip', child: Text('Skip today')),
                     PopupMenuItem(

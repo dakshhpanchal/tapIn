@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'dart:io';
 
+import 'package:opennutritracker/core/presentation/widgets/app_bar_save_button.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:opennutritracker/features/recipes/presentation/widgets/new_food_mode_switch.dart';
@@ -50,6 +51,8 @@ class _EditMealScreenState extends State<EditMealScreen> {
 
   late bool _editOnly;
   bool _newFood = false;
+  bool _showModeSwitch = true;
+  String? _initialSnapshot;
 
   late EditMealBloc _editMealBloc;
 
@@ -134,6 +137,13 @@ class _EditMealScreenState extends State<EditMealScreen> {
     _usesImperialUnits = args.usesImperialUnits;
     _editOnly = args.editOnly;
     _newFood = args.newFood;
+    _showModeSwitch = args.showModeSwitch;
+    // Taken after the first frames, once the fields are filled in.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _initialSnapshot ??= _formSnapshot();
+      });
+    });
 
     _nameTextController.text = _mealEntity.name ?? "";
     _brandsTextController.text = _mealEntity.brands ?? "";
@@ -245,14 +255,21 @@ class _EditMealScreenState extends State<EditMealScreen> {
     _maybeReinterpretKcalField(usesKj);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final palette = isDark ? AppPalette.dark : AppPalette.light;
-    return SafeArea(
-      child: Scaffold(
+    return ColoredBox(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: SafeArea(
+        child: PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) _onBackRequested();
+          },
+          child: Scaffold(
         backgroundColor: palette.canvas,
         appBar: AppBar(
           backgroundColor: palette.canvas,
           surfaceTintColor: Colors.transparent,
           toolbarHeight: MediaQuery.textScalerOf(context).scale(kToolbarHeight),
-          bottom: _newFood
+          bottom: _newFood && _showModeSwitch
               ? NewFoodModeSwitch(
                   current: NewFoodMode.nutrition,
                   usesImperialUnits: _usesImperialUnits,
@@ -262,21 +279,11 @@ class _EditMealScreenState extends State<EditMealScreen> {
             _newFood ? S.of(context).newFoodLabel : S.of(context).editMealLabel,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
           actions: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(Dimens.spacing16, 0, Dimens.spacing16, 0),
-              child: Semantics(
-                identifier: 'edit-meal-save',
-                child: FilledButton(
-                  onPressed: () => _onSavePressed(_usesImperialUnits),
-                  style: FilledButton.styleFrom(
-                    shape: const RoundedRectangleBorder(borderRadius: Dimens.borderRadiusM),
-                  ),
-                  child: Text(S.of(context).buttonSaveLabel),
-                ),
-              ),
+            AppBarSaveButton(
+              identifier: 'edit-meal-save',
+              onPressed: () => _onSavePressed(_usesImperialUnits),
             ),
           ],
         ),
@@ -295,7 +302,7 @@ class _EditMealScreenState extends State<EditMealScreen> {
             return const SizedBox.shrink();
           },
         ),
-      ),
+      ))),
     );
   }
 
@@ -387,6 +394,7 @@ class _EditMealScreenState extends State<EditMealScreen> {
           Semantics(
             identifier: 'edit-meal-mode-toggle',
             child: SegmentedButton<CustomMealFormMode>(
+              showSelectedIcon: false,
               segments: [
                 ButtonSegment(
                   value: CustomMealFormMode.simple,
@@ -468,6 +476,7 @@ class _EditMealScreenState extends State<EditMealScreen> {
           Semantics(
             identifier: 'edit-meal-unit-selector',
             child: SegmentedButton<String>(
+              showSelectedIcon: false,
               segments: _mealUnitButtonSegment,
               selected: {selectedUnit ?? _units[2]},
               onSelectionChanged: (Set<String> newSelection) {
@@ -510,6 +519,7 @@ class _EditMealScreenState extends State<EditMealScreen> {
           Semantics(
             identifier: 'edit-meal-nutrients-mode',
             child: SegmentedButton<bool>(
+              showSelectedIcon: false,
               segments: [
                 ButtonSegment(
                   value: false,
@@ -677,6 +687,61 @@ class _EditMealScreenState extends State<EditMealScreen> {
   /// from the same pre-edit [_mealEntity]: after a barcode clear that is a
   /// fresh internal id matching no entry, and the library got a copy.
   bool _saving = false;
+
+  List<TextEditingController> get _allControllers => [
+    _nameTextController,
+    _brandsTextController,
+    _barcodeTextController,
+    _mealQuantityTextController,
+    _servingQuantityTextController,
+    _baseQuantityTextController,
+    _kcalTextController,
+    _carbsTextController,
+    _fatTextController,
+    _proteinTextController,
+    _fiberTextController,
+    _saturatedFatTextController,
+    _sugarsTextController,
+    _sodiumTextController,
+    _calciumTextController,
+    _ironTextController,
+    _potassiumTextController,
+    _magnesiumTextController,
+    _vitaminDTextController,
+    _vitaminB12TextController,
+  ];
+
+  String _formSnapshot() => _allControllers.map((c) => c.text).join('\u0001');
+
+  /// Asks before leaving a form with typed-in changes, so a stray back
+  /// gesture does not throw the food away.
+  Future<void> _onBackRequested() async {
+    final changed =
+        _initialSnapshot != null && _initialSnapshot != _formSnapshot();
+    if (!changed) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final s = S.of(context);
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.discardChangesTitle),
+        content: Text(s.discardChangesContent),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(s.dialogCancelLabel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(s.discardChangesConfirmLabel),
+          ),
+        ],
+      ),
+    );
+    if (discard == true && mounted) Navigator.of(context).pop();
+  }
 
   Future<void> _onSavePressed(bool usesImperialUnits) async {
     if (_saving) return;
@@ -934,7 +999,9 @@ class _EditMealScreenState extends State<EditMealScreen> {
 
       if (!mounted) return;
       if (_editOnly) {
-        Navigator.of(context).pop();
+        // The saved meal goes back to callers that want it, such as the
+        // recipe builder's "Create custom ingredient".
+        Navigator.of(context).pop(newMealEntity);
       } else {
         Navigator.of(context).pushNamedAndRemoveUntil(
           NavigationOptions.mealDetailRoute,
@@ -1104,6 +1171,10 @@ class EditMealScreenArguments {
   /// to build it from ingredients instead.
   final bool newFood;
 
+  /// Hides the nutrition/ingredients toggle when the form is opened from a
+  /// place that cannot swap to the other mode, like the ingredient picker.
+  final bool showModeSwitch;
+
   EditMealScreenArguments(
     this.day,
     this.mealEntity,
@@ -1111,6 +1182,7 @@ class EditMealScreenArguments {
     this.usesImperialUnits, {
     this.editOnly = false,
     this.newFood = false,
+    this.showModeSwitch = true,
   });
 }
 

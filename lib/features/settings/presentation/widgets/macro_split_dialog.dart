@@ -1,3 +1,4 @@
+import 'package:opennutritracker/core/styles/app_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:opennutritracker/core/utils/reload_diary_and_trends.dart';
@@ -277,10 +278,14 @@ class _MacroSplitDialogState extends State<MacroSplitDialog> {
       _MacroField.protein: s.proteinLabel,
       _MacroField.fat: s.fatLabel,
     };
-    const colors = {
-      _MacroField.carbs: Colors.orange,
-      _MacroField.protein: Colors.blue,
-      _MacroField.fat: Colors.green,
+    // The same macro colours as Home and the Diary.
+    final macroPalette = Theme.of(context).brightness == Brightness.dark
+        ? AppPalette.dark
+        : AppPalette.light;
+    final colors = {
+      _MacroField.carbs: macroPalette.carbs,
+      _MacroField.protein: macroPalette.protein,
+      _MacroField.fat: macroPalette.fat,
     };
     const ids = {
       _MacroField.carbs: 'macro-split-carbs',

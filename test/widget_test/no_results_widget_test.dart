@@ -25,7 +25,7 @@ void main() {
 
       expect(find.text('No results found'), findsOneWidget);
       expect(find.text('Scan barcode'), findsNothing);
-      expect(find.text('Create custom food'), findsNothing);
+      expect(find.text('New food'), findsNothing);
     });
 
     testWidgets('shows both action buttons when both callbacks are provided', (
@@ -45,10 +45,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Scan barcode'), findsOneWidget);
-      expect(find.text('Create custom food'), findsOneWidget);
+      expect(find.text('New food'), findsOneWidget);
 
       await tester.tap(find.text('Scan barcode'));
-      await tester.tap(find.text('Create custom food'));
+      await tester.tap(find.text('New food'));
       await tester.pump();
 
       expect(scanTaps, 1);
@@ -62,7 +62,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Scan barcode'), findsOneWidget);
-      expect(find.text('Create custom food'), findsNothing);
+      expect(find.text('New food'), findsNothing);
     });
 
     testWidgets('shows and wires the search-all button when provided', (

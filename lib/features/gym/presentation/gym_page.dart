@@ -1,3 +1,5 @@
+import 'package:opennutritracker/core/presentation/widgets/confirm_dialog.dart';
+import 'package:opennutritracker/generated/l10n.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:opennutritracker/core/presentation/widgets/app_card.dart';
@@ -287,9 +289,21 @@ class _WorkoutTile extends StatelessWidget {
               child: const Text('Start'),
             ),
             PopupMenuButton<String>(
-              onSelected: (v) {
+              tooltip: 'More',
+              onSelected: (v) async {
                 if (v == 'edit') _openEditor(context, existing: routine);
-                if (v == 'delete') cubit.deleteRoutine(routine.id);
+                if (v == 'delete') {
+                  final ok = await showConfirmDialog(
+                    context,
+                    title: 'Delete "${routine.name}"?',
+                    content: 'Workouts you already logged stay in History.',
+                    confirmLabel:
+                        Localizations.of<S>(context, S)?.dialogDeleteLabel ??
+                        'Delete',
+                    destructive: true,
+                  );
+                  if (ok) cubit.deleteRoutine(routine.id);
+                }
               },
               itemBuilder: (_) => const [
                 PopupMenuItem(value: 'edit', child: Text('Edit')),

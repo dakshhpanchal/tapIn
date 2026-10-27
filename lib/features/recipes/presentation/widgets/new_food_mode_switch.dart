@@ -67,12 +67,19 @@ class NewFoodModeSwitch extends StatelessWidget implements PreferredSizeWidget {
 }
 
 /// Opens the New food screen in [mode]; [replace] swaps the current screen
-/// instead of stacking another on top.
-Future<void> openNewFood(
+/// instead of stacking another on top. [showModeSwitch] hides the toggle for
+/// callers that cannot swap to the other mode, like the ingredient picker.
+/// With [intakeType] the nutrition form carries on to log the new food to that
+/// meal on [day] after saving; without it the food is only saved to My foods.
+/// Completes with the saved food when the nutrition form saves one.
+Future<Object?> openNewFood(
   BuildContext context,
   NewFoodMode mode, {
   bool usesImperialUnits = false,
   bool replace = false,
+  bool showModeSwitch = true,
+  DateTime? day,
+  IntakeTypeEntity? intakeType,
 }) {
   final navigator = Navigator.of(context);
   final route = mode == NewFoodMode.ingredients
@@ -81,12 +88,13 @@ Future<void> openNewFood(
   final Object arguments = mode == NewFoodMode.ingredients
       ? const RecipeBuilderArguments(newFood: true)
       : EditMealScreenArguments(
-          DateTime.now(),
+          day ?? DateTime.now(),
           MealEntity.empty(),
-          IntakeTypeEntity.breakfast,
+          intakeType ?? IntakeTypeEntity.breakfast,
           usesImperialUnits,
-          editOnly: true,
+          editOnly: intakeType == null,
           newFood: true,
+          showModeSwitch: showModeSwitch && intakeType == null,
         );
   return replace
       ? navigator.pushReplacementNamed(route, arguments: arguments)

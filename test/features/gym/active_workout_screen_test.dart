@@ -555,7 +555,7 @@ void main() {
       expect(planned.note, isEmpty); // the note for next time stays separate
 
       // Reopening the plan shows what was saved.
-      await tester.tap(find.byTooltip('Show menu').first);
+      await tester.tap(find.byTooltip('More').first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Edit'));
       await tester.pumpAndSettle();

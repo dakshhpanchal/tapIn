@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:opennutritracker/core/presentation/widgets/app_bar_save_button.dart';
 import 'package:flutter/material.dart';
 import 'package:opennutritracker/features/recipes/presentation/widgets/new_food_mode_switch.dart';
 import 'package:flutter/services.dart';
@@ -89,18 +90,10 @@ class _RecipeBuilderScreenState extends State<RecipeBuilderScreen> {
     super.dispose();
   }
 
-  InputBorder _fieldBorder(AppPalette palette) {
-    return OutlineInputBorder(
-      borderRadius: Dimens.borderRadiusS,
-      borderSide: BorderSide(color: palette.border, width: Dimens.hairline),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final palette = isDark ? AppPalette.dark : AppPalette.light;
-    final fieldBorder = _fieldBorder(palette);
     return BlocConsumer<RecipeBuilderBloc, RecipeBuilderState>(
       bloc: _bloc,
       listener: (context, state) {
@@ -146,26 +139,11 @@ class _RecipeBuilderScreenState extends State<RecipeBuilderScreen> {
               overflow: TextOverflow.ellipsis,
             ),
             actions: [
-              if (state.isSaving)
-                const Padding(
-                  padding: EdgeInsets.only(right: 16),
-                  child: Center(
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  ),
-                )
-              else
-                Semantics(
-                  identifier: 'recipe-builder-save',
-                  child: TextButton.icon(
-                    onPressed: () => _bloc.add(const SaveRecipeEvent()),
-                    icon: const Icon(Icons.save_outlined),
-                    label: Text(S.of(context).recipeSaveLabel),
-                  ),
-                ),
+              AppBarSaveButton(
+                identifier: 'recipe-builder-save',
+                saving: state.isSaving,
+                onPressed: () => _bloc.add(const SaveRecipeEvent()),
+              ),
             ],
           ),
           body: ListView(
@@ -189,8 +167,6 @@ class _RecipeBuilderScreenState extends State<RecipeBuilderScreen> {
                 controller: _nameController,
                 decoration: InputDecoration(
                   labelText: S.of(context).recipeNameLabel,
-                  border: fieldBorder,
-                  enabledBorder: fieldBorder,
                 ),
                 onChanged: (v) => _bloc.add(UpdateNameEvent(v)),
               ),
@@ -200,8 +176,6 @@ class _RecipeBuilderScreenState extends State<RecipeBuilderScreen> {
                 maxLines: 2,
                 decoration: InputDecoration(
                   labelText: S.of(context).recipeDescriptionLabel,
-                  border: fieldBorder,
-                  enabledBorder: fieldBorder,
                 ),
                 onChanged: (v) => _bloc.add(UpdateDescriptionEvent(v)),
               ),
@@ -216,8 +190,6 @@ class _RecipeBuilderScreenState extends State<RecipeBuilderScreen> {
                   labelText: S.of(context).recipeServingsCountLabel,
                   helperText: S.of(context).recipeServingsCountHelper,
                   helperMaxLines: 2,
-                  border: fieldBorder,
-                  enabledBorder: fieldBorder,
                 ),
                 onChanged: (v) {
                   final parsed = v.trim().isEmpty ? null : int.tryParse(v);
@@ -231,8 +203,6 @@ class _RecipeBuilderScreenState extends State<RecipeBuilderScreen> {
                   labelText: S.of(context).recipeTagsLabel,
                   helperText: S.of(context).recipeTagsHelper,
                   helperMaxLines: 2,
-                  border: fieldBorder,
-                  enabledBorder: fieldBorder,
                 ),
                 onChanged: (v) {
                   final parsed = v
@@ -298,8 +268,6 @@ class _RecipeBuilderScreenState extends State<RecipeBuilderScreen> {
                       ? S.of(context).recipeTotalWeightManualHelper
                       : S.of(context).recipeTotalWeightCalculatedHelper,
                   helperMaxLines: 3,
-                  border: fieldBorder,
-                  enabledBorder: fieldBorder,
                 ),
                 onChanged: (v) {
                   final raw = v.replaceAll(',', '.');
@@ -380,6 +348,16 @@ class _RecipeBuilderScreenState extends State<RecipeBuilderScreen> {
           ),
           body: FoodSearchTabView(
             onMealSelected: (meal) => Navigator.of(searchContext).pop(meal),
+            onCreateCustomPressed: () async {
+              final created = await openNewFood(
+                searchContext,
+                NewFoodMode.nutrition,
+                showModeSwitch: false,
+              );
+              if (created is MealEntity && searchContext.mounted) {
+                Navigator.of(searchContext).pop(created);
+              }
+            },
             onBarcodePressed: () async {
               // Push the scanner in pick-mode — it pops a MealEntity back to
               // us instead of routing into the meal-detail logging flow. We

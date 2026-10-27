@@ -101,7 +101,7 @@ class _OffAccountDialogState extends State<OffAccountDialog> {
     } on OffLoginRejectedException {
       _fail('Open Food Facts did not accept that username and password.');
     } on OffUnavailableException {
-      _fail('Open Food Facts is busy right now. Try again in a moment.');
+      _fail('Open Food Facts is busy right now. Try again in a minute.');
     } catch (_) {
       _fail('Could not reach Open Food Facts. Check your connection.');
     }

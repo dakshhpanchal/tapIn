@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:introduction_screen/introduction_screen.dart';
 import 'package:opennutritracker/core/domain/entity/app_theme_entity.dart';
@@ -100,7 +101,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final cancelToProfileId =
         ModalRoute.of(context)?.settings.arguments as String?;
 
-    final scaffold = Scaffold(
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final scaffold = AnnotatedRegion<SystemUiOverlayStyle>(
+      value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      child: Scaffold(
       body: SafeArea(
         child: BlocBuilder<OnboardingBloc, OnboardingState>(
           bloc: _onboardingBloc,
@@ -112,7 +116,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           },
         ),
       ),
-    );
+    ));
 
     if (cancelToProfileId == null) return scaffold;
 

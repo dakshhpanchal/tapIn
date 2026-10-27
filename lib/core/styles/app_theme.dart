@@ -99,11 +99,28 @@ ThemeData buildAppTheme(AppPalette p) {
       filled: true,
       fillColor: p.surfaceMuted,
       contentPadding: const EdgeInsets.symmetric(horizontal: Dimens.spacing16, vertical: Dimens.spacing12),
-      border: const OutlineInputBorder(borderRadius: Dimens.borderRadiusM, borderSide: BorderSide.none),
-      enabledBorder: const OutlineInputBorder(borderRadius: Dimens.borderRadiusM, borderSide: BorderSide.none),
-      focusedBorder: OutlineInputBorder(
+      // Filled fields without an outline. An underline-type border keeps the
+      // floating label inside the field instead of straddling its top edge.
+      border: const UnderlineInputBorder(borderRadius: Dimens.borderRadiusM, borderSide: BorderSide.none),
+      enabledBorder: const UnderlineInputBorder(borderRadius: Dimens.borderRadiusM, borderSide: BorderSide.none),
+      focusedBorder: UnderlineInputBorder(
         borderRadius: Dimens.borderRadiusM,
         borderSide: BorderSide(color: p.accent, width: 2),
+      ),
+    ),
+    // Every segmented control (New food mode, form view, units) looks alike:
+    // no check mark, a hairline outline and a soft selected fill.
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        side: WidgetStatePropertyAll(
+          BorderSide(color: p.border, width: Dimens.hairline),
+        ),
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? p.accent.withValues(alpha: 0.2)
+              : Colors.transparent,
+        ),
+        foregroundColor: WidgetStatePropertyAll(p.textStrong),
       ),
     ),
     chipTheme: ChipThemeData(

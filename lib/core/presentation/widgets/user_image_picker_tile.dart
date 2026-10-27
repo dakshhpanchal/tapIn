@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:opennutritracker/core/presentation/widgets/app_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:opennutritracker/core/styles/dimens.dart';
 import 'package:opennutritracker/core/utils/user_image_storage.dart';
@@ -156,7 +157,7 @@ class UserImagePickerTile extends StatelessWidget {
     _Strings strings, {
     required bool hasImage,
   }) async {
-    await showModalBottomSheet<void>(
+    await showAppSheet<void>(
       context: context,
       builder: (ctx) {
         return SafeArea(

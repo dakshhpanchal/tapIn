@@ -63,7 +63,7 @@ void main() {
     expect(captured!.unit, 'g');
   });
 
-  testWidgets('returns null when amount is invalid', (tester) async {
+  testWidgets('keeps the sheet open and explains when amount is invalid', (tester) async {
     IngredientQuantitySelection? captured = const IngredientQuantitySelection(
       amount: -1,
       unit: 'sentinel',
@@ -90,10 +90,12 @@ void main() {
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
 
-    // Don't enter anything; just tap Add.
+    // Clear the amount and tap Add: nothing is returned and the sheet stays.
+    await tester.enterText(find.byType(TextFormField).first, '');
     await tester.tap(find.text('Add'));
     await tester.pumpAndSettle();
 
-    expect(captured, isNull);
+    expect(find.text('Enter an amount greater than 0'), findsOneWidget);
+    expect(captured!.unit, 'sentinel'); // still waiting for an answer
   });
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:opennutritracker/core/presentation/widgets/app_sheet.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1333,7 +1334,7 @@ class _BulkAddScreenState extends State<BulkAddScreen> {
       AiProvider.ownServer =>
         S.of(context).bulkAddPhotoDisclosureOwnServer(destination.name),
     };
-    final shouldOpenCamera = await showModalBottomSheet<bool>(
+    final shouldOpenCamera = await showAppSheet<bool>(
       context: context,
       builder: (sheetContext) => SafeArea(
         child: Wrap(
@@ -1429,7 +1430,7 @@ class _BulkAddScreenState extends State<BulkAddScreen> {
   }
 
   Future<void> _showCandidatePicker(int index, BulkAddRow row) async {
-    final chosen = await showModalBottomSheet<int>(
+    final chosen = await showAppSheet<int>(
       context: context,
       builder: (context) => SafeArea(
         // Label the surface, not each row — identifiers would churn with
@@ -1466,7 +1467,7 @@ class _BulkAddScreenState extends State<BulkAddScreen> {
   }
 
   void _showQuickAdd() {
-    showModalBottomSheet<void>(
+    showAppSheet<void>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,

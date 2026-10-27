@@ -260,8 +260,10 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
       listenWhen: (prev, curr) =>
           curr.hydratedMeal != null && curr.hydratedMeal != prev.hydratedMeal,
       listener: (context, state) => _onMealHydrated(state.hydratedMeal!),
-      child: SafeArea(
-        child: Scaffold(
+      child: ColoredBox(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: SafeArea(
+          child: Scaffold(
           backgroundColor:
               (Theme.of(context).brightness == Brightness.dark ? AppPalette.dark : AppPalette.light).canvas,
           body: BlocBuilder<MealDetailBloc, MealDetailState>(
@@ -300,7 +302,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
             );
           },
           ),
-        ),
+        )),
       ),
     );
   }
@@ -367,7 +369,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
             if (meal.source == MealSourceEntity.off &&
                 (meal.code ?? '').isNotEmpty)
               IconButton(
-                tooltip: 'Correct on Open Food Facts',
+                tooltip: S.of(context).offCorrectTooltip,
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<bool>(
                     builder: (_) => OffContributionScreen(
@@ -396,6 +398,7 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
                     ),
                   );
                 },
+                tooltip: S.of(context).editMealLabel,
                 icon: const Icon(Icons.edit_rounded),
               ),
             ),

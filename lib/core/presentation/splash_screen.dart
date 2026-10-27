@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:opennutritracker/core/utils/navigation_options.dart';
 
 /// First screen shown on launch, on black: the tapIn icon pops in, a burst of
@@ -94,7 +95,10 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    // Black screen: light status bar icons so they stay visible.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
       backgroundColor: Colors.black,
       body: Center(
         child: AnimatedBuilder(
@@ -134,7 +138,7 @@ class _SplashScreenState extends State<SplashScreen>
           },
         ),
       ),
-    );
+    ));
   }
 }
 

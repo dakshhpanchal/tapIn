@@ -1,15 +1,11 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:opennutritracker/core/presentation/sources_screen.dart';
 import 'package:opennutritracker/core/presentation/widgets/app_banner_version.dart';
 import 'package:opennutritracker/core/utils/app_const.dart';
 import 'package:opennutritracker/core/utils/demo/demo_seeder.dart';
 import 'package:opennutritracker/core/utils/navigation_options.dart';
-import 'package:opennutritracker/core/utils/url_const.dart';
 import 'package:opennutritracker/features/profile/presentation/utils/profile_switch_coordinator.dart';
 import 'package:opennutritracker/generated/l10n.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class OnboardingIntroPageBody extends StatefulWidget {
   const OnboardingIntroPageBody({
@@ -29,9 +25,20 @@ class OnboardingIntroPageBody extends StatefulWidget {
 }
 
 class _OnboardingIntroPageBodyState extends State<OnboardingIntroPageBody> {
-  late bool _acceptedPolicy = widget.initialAcceptedPolicy;
+  // tapIn has no policy of its own to accept, so there is no checkbox and
+  // Start is always available.
+  late final bool _acceptedPolicy = true;
   late bool _acceptedDataCollection = widget.initialAcceptedDataCollection;
   bool _seedingDemo = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Let the footer's Start button know it is active from the first frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.setPageContent(true, _acceptedDataCollection);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,42 +65,6 @@ class _OnboardingIntroPageBodyState extends State<OnboardingIntroPageBody> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16.0),
-                // Policy first: both Start (footer) and Try Demo require it.
-                ListTile(
-                  onTap: () => _togglePolicy(),
-                  title: Text.rich(
-                    textAlign: TextAlign.center,
-                    TextSpan(
-                      text: S.of(context).readLabel,
-                      style: Theme.of(context).textTheme.bodySmall,
-                      children: [
-                        TextSpan(
-                          text: ' ${S.of(context).privacyPolicyLabel}',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                                decoration: TextDecoration.underline,
-                              ),
-                          recognizer: TapGestureRecognizer()
-                            ..onTap = () {
-                              _launchUrl();
-                            },
-                        ),
-                      ],
-                    ),
-                  ),
-                  leading: Semantics(
-                    identifier: 'onboarding-checkbox-privacy',
-                    child: Checkbox(
-                      value: _acceptedPolicy,
-                      onChanged: (value) {
-                        if (value != null) {
-                          _togglePolicy();
-                        }
-                      },
-                    ),
-                  ),
-                ),
                 ListTile(
                   onTap: () => _toggleDataCollection(),
                   title: Text(
@@ -120,7 +91,7 @@ class _OnboardingIntroPageBodyState extends State<OnboardingIntroPageBody> {
                       // disables it.
                       onPressed: _seedingDemo
                           ? null
-                          : (_acceptedPolicy ? _tryDemo : _policyRequired),
+                          : _tryDemo,
                       style: _acceptedPolicy
                           ? null
                           : OutlinedButton.styleFrom(
@@ -169,13 +140,6 @@ class _OnboardingIntroPageBodyState extends State<OnboardingIntroPageBody> {
     );
   }
 
-  void _togglePolicy() {
-    setState(() {
-      _acceptedPolicy = !_acceptedPolicy;
-      widget.setPageContent(_acceptedPolicy, _acceptedDataCollection);
-    });
-  }
-
   void _toggleDataCollection() {
     setState(() {
       _acceptedDataCollection = !_acceptedDataCollection;
@@ -192,13 +156,6 @@ class _OnboardingIntroPageBodyState extends State<OnboardingIntroPageBody> {
   /// Says why the demo is unavailable instead of letting the tap fall on the
   /// floor. The subtitle under the button already states the requirement;
   /// this is for the user who tapped anyway.
-  void _policyRequired() {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text(S.of(context).onboardingBlockedDemoPolicySnack)),
-      );
-  }
 
   /// Seeds the active profile with sample data and jumps straight to Home.
   /// Requires the privacy-policy checkbox (same bar as Start) so demo entry
@@ -226,33 +183,5 @@ class _OnboardingIntroPageBodyState extends State<OnboardingIntroPageBody> {
         SnackBar(content: Text(S.of(context).onboardingTryDemoError)),
       );
     }
-  }
-
-  Future<void> _launchUrl() async {
-    // Read the locale before the await; the context must not be touched
-    // afterwards without a mounted check.
-    final policy = URLConst.privacyPolicyFor(
-      Localizations.localeOf(context).languageCode,
-    );
-
-    // A device with no browser is the case worth reporting: this link is the
-    // only way to read the policy the checkbox below asks you to accept, and
-    // silently doing nothing reads as a broken tap.
-    var opened = false;
-    try {
-      opened = await launchUrl(
-        Uri.parse(policy),
-        mode: LaunchMode.externalApplication,
-      );
-    } on PlatformException {
-      // No activity able to handle the intent — a failure to open, not a crash.
-      opened = false;
-    }
-
-    if (opened || !mounted) return;
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(S.of(context).errorOpeningBrowser)));
   }
 }

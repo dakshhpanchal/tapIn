@@ -152,11 +152,23 @@ class _ScannerScreenState extends State<ScannerScreen>
         } else if (state is ScannerFailedState) {
           return Scaffold(
             backgroundColor: palette.canvas,
-            appBar: AppBar(backgroundColor: palette.canvas),
+            appBar: AppBar(
+              backgroundColor: palette.canvas,
+              title: Text(S.of(context).scanProductLabel),
+            ),
             body: Center(
               child: SingleChildScrollView(
                 child: ErrorDialog(
                   errorText: _failureMessage(context, state.type),
+                  subtitle:
+                      state.type == ScannerFailedStateType.productNotFound
+                      ? S.of(context).scannerProductNotFoundHint
+                      : null,
+                  icon: state.type == ScannerFailedStateType.productNotFound
+                      ? Icons.search_off_rounded
+                      : Icons.cloud_off_rounded,
+                  emphasizeSecondary:
+                      state.type == ScannerFailedStateType.productNotFound,
                   onRefreshPressed: _onRefreshButtonPressed,
                   // Not in the database: let the user add it, with the scanned
                   // barcode attached, so scanning it again finds their entry.
@@ -183,7 +195,7 @@ class _ScannerScreenState extends State<ScannerScreen>
     final s = S.of(context);
     return switch (type) {
       ScannerFailedStateType.productNotFound =>
-        '${s.errorProductNotFound}\n\n${s.scannerProductNotFoundHint}',
+        s.errorProductNotFound,
       ScannerFailedStateType.busy => s.errorOffBusy,
       ScannerFailedStateType.offline => s.errorOffline,
       ScannerFailedStateType.error => s.errorFetchingProductData,
@@ -240,7 +252,7 @@ class _ScannerScreenState extends State<ScannerScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Log in to Open Food Facts in Settings to share products like '
+            'Log in to Open Food Facts in Settings > Data to share products like '
             'this one.',
           ),
         ),
@@ -262,7 +274,7 @@ class _ScannerScreenState extends State<ScannerScreen>
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Review'),
+            child: const Text('Continue'),
           ),
         ],
       ),

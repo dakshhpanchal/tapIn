@@ -1,3 +1,4 @@
+import 'package:opennutritracker/core/presentation/widgets/app_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:opennutritracker/core/domain/usecase/get_config_usecase.dart';
 import 'package:opennutritracker/core/presentation/widgets/add_item_bottom_sheet.dart';
@@ -111,10 +112,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     ];
     _appbarPages = [
       const HomeAppbar(),
-      MainAppbar(title: S.of(context).diaryLabel, iconData: Icons.book),
-      MainAppbar(title: 'Gym', iconData: Icons.fitness_center),
-      MainAppbar(title: S.of(context).trendsLabel, iconData: Icons.insights),
-      MainAppbar(title: S.of(context).youLabel, iconData: Icons.account_circle),
+      MainAppbar(title: S.of(context).diaryLabel, iconData: Icons.book_rounded),
+      MainAppbar(title: 'Gym', iconData: Icons.fitness_center_rounded),
+      MainAppbar(title: S.of(context).trendsLabel, iconData: Icons.insights_rounded),
+      MainAppbar(title: S.of(context).youLabel, iconData: Icons.account_circle_rounded),
     ];
     super.didChangeDependencies();
   }
@@ -136,14 +137,17 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           ),
         ],
       ),
-      floatingActionButton: Semantics(
-        identifier: 'fab-add-item',
-        child: FloatingActionButton(
-          onPressed: () => _onFabPressed(context),
-          tooltip: S.of(context).addLabel,
-          child: const Icon(Icons.add, size: 30),
-        ),
-      ),
+      // Adding food only makes sense from Home and the Diary.
+      floatingActionButton: _selectedPageIndex > 1
+          ? null
+          : Semantics(
+              identifier: 'fab-add-item',
+              child: FloatingActionButton(
+                onPressed: () => _onFabPressed(context),
+                tooltip: S.of(context).addLabel,
+                child: const Icon(Icons.add, size: 30),
+              ),
+            ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       bottomNavigationBar: BottomAppBar(
         color: palette.surface,
@@ -220,12 +224,16 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   Future<void> _onFabPressed(BuildContext context) async {
     final config = await locator<GetConfigUsecase>().getConfig();
     if (!context.mounted) return;
-    showModalBottomSheet(
+    // On the Diary the sheet logs to the day being viewed, not always today.
+    final day = _selectedPageIndex == 1
+        ? (diaryViewedDay ?? DateTime.now())
+        : DateTime.now();
+    showAppSheet(
       context: context,
       isScrollControlled: true,
       builder: (BuildContext context) {
         return AddItemBottomSheet(
-          day: DateTime.now(),
+          day: day,
           showActivityTracking: config.showActivityTracking,
           usesImperialUnits: config.usesImperialFoodUnits,
           suggestedType: MealTypeSuggester.suggestFromTime(

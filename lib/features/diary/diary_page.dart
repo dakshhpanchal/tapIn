@@ -20,6 +20,10 @@ import 'package:opennutritracker/features/diary/presentation/widgets/day_info_wi
 import 'package:opennutritracker/features/meal_detail/presentation/bloc/meal_detail_bloc.dart';
 import 'package:opennutritracker/generated/l10n.dart';
 
+/// The day the Diary tab is showing, read by the Add button so it logs to the
+/// day on screen rather than always to today.
+DateTime? diaryViewedDay;
+
 class DiaryPage extends StatefulWidget {
   const DiaryPage({super.key});
 
@@ -75,6 +79,7 @@ class _DiaryPageState extends State<DiaryPage> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    diaryViewedDay = _selectedDate;
     return BlocConsumer<DiaryBloc, DiaryState>(
       bloc: _diaryBloc,
       listener: (context, state) {
@@ -136,6 +141,7 @@ class _DiaryPageState extends State<DiaryPage> with WidgetsBindingObserver {
             child: Padding(
               padding: const EdgeInsets.only(right: Dimens.spacing8),
               child: IconButton(
+                tooltip: S.of(context).diaryGoToTodayTooltip,
                 icon: const Icon(Icons.today_rounded),
                 onPressed: () => _onDateSelected(_currentDate, trackedDaysMap),
               ),

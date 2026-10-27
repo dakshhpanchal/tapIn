@@ -5,7 +5,6 @@ class AppConst {
   static const userAgentAppName = "tapIn";
   static const platformNameAndroid = "Android";
   static const platformNameIOS = "iOS";
-  static const reportErrorEmail = "opennutritracker-dev@pm.me";
   static const sourceCodeUrl = "https://github.com/dakshhpanchal/tapIn";
 
   static Future<String> getVersionNumber() async {

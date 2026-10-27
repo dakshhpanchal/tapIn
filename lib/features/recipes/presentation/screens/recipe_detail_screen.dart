@@ -1,3 +1,4 @@
+import 'package:opennutritracker/core/presentation/widgets/app_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:opennutritracker/core/domain/entity/intake_type_entity.dart';
@@ -259,7 +260,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     final s = S.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final palette = isDark ? AppPalette.dark : AppPalette.light;
-    return showModalBottomSheet<IntakeTypeEntity>(
+    return showAppSheet<IntakeTypeEntity>(
       context: context,
       builder: (ctx) {
         Widget tile(IntakeTypeEntity type, String label) {
