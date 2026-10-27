@@ -73,7 +73,7 @@ class SettingsLoadedState extends SettingsState {
     this.usesKilojoules = false,
     this.dayStartOffsetHours = 0,
     this.dayStartOffsetMinutes = 0,
-    this.useMaterialYou = true,
+    this.useMaterialYou = false,
     this.accentColor,
     this.isDemoData = false,
     this.healthImportEnabled = false,

@@ -43,40 +43,45 @@ class AppPalette {
   Color get fat => fatColor;
   Color get protein => proteinColor;
 
-  static const light = AppPalette(
+  /// The tapIn palettes as designed. [light] and [dark] start out as these and
+  /// are replaced by the app when Material You or an accent changes them, so
+  /// every widget that reads them sees the colours actually in use.
+  static const baseLight = AppPalette(
     brightness: Brightness.light,
-    canvas: Color(0xFFF7F4EF),
+    canvas: Color(0xFFF6F5FC),
     surface: Color(0xFFFFFFFF),
-    surfaceMuted: Color(0xFFEFEAE1),
-    border: Color(0xFFE7E1D6),
-    shadow: Color(0x14403A2E),
-    // Deepened from #1FA971 so white-on-accent and accent-as-text both clear
-    // WCAG AA (~4.6:1) on the light surface — buttons, nav labels and the ring.
-    accent: Color(0xFF0E7A4D),
-    onAccent: Color(0xFFFFFFFF),
-    carbsColor: Color(0xFFB87410),
-    fatColor: Color(0xFFD05536),
-    proteinColor: Color(0xFF1F8E80),
-    textStrong: Color(0xFF2B2A27),
-    // Darkened from #8A857C (~3.5:1) to ~4.6:1 so secondary text passes AA.
-    textMuted: Color(0xFF6E685E),
+    surfaceMuted: Color(0xFFECEBF8),
+    border: Color(0xFFE1E0F2),
+    shadow: Color(0x142E2B4A),
+    // The coral ring of the launcher icon, with dark text on top for contrast.
+    accent: Color(0xFFFC9375),
+    onAccent: Color(0xFF20201C),
+    // Lavender, coral and indigo, the icon's other colours.
+    carbsColor: Color(0xFF7E80DC),
+    fatColor: Color(0xFFE0653F),
+    proteinColor: Color(0xFF3B3D8F),
+    textStrong: Color(0xFF2B2A33),
+    textMuted: Color(0xFF6B6880),
   );
 
-  static const dark = AppPalette(
+  static const baseDark = AppPalette(
     brightness: Brightness.dark,
-    canvas: Color(0xFF1B1A18),
-    surface: Color(0xFF252320),
-    surfaceMuted: Color(0xFF302D28),
-    border: Color(0xFF38352F),
+    canvas: Color(0xFF0E0E14),
+    surface: Color(0xFF181822),
+    surfaceMuted: Color(0xFF232332),
+    border: Color(0xFF2E2E42),
     shadow: Color(0x33000000),
-    accent: Color(0xFF34D08A),
-    onAccent: Color(0xFF06281A),
-    carbsColor: Color(0xFFF2B45A),
-    fatColor: Color(0xFFFF937B),
-    proteinColor: Color(0xFF49C9B8),
-    textStrong: Color(0xFFECE8E1),
-    textMuted: Color(0xFFA39E94),
+    accent: Color(0xFFFC9375),
+    onAccent: Color(0xFF2A0F06),
+    carbsColor: Color(0xFFA5A6EB),
+    fatColor: Color(0xFFFF9A78),
+    proteinColor: Color(0xFF6C70E0),
+    textStrong: Color(0xFFEDEBFA),
+    textMuted: Color(0xFFA3A1B8),
   );
+
+  static AppPalette light = baseLight;
+  static AppPalette dark = baseDark;
 
   /// Returns a copy with the accent swapped for [newAccent] (accent picker or a
   /// harmonized Material You primary). The neutral canvas, surfaces and macro
@@ -101,6 +106,31 @@ class AppPalette {
       textMuted: textMuted,
     );
   }
+
+  /// The canvas, surfaces, borders and text taken from a Material You scheme,
+  /// so the whole background follows the wallpaper, not only the accent.
+  AppPalette withSurfaces({
+    required Color canvas,
+    required Color surface,
+    required Color surfaceMuted,
+    required Color border,
+    required Color textStrong,
+    required Color textMuted,
+  }) => AppPalette(
+    brightness: brightness,
+    canvas: canvas,
+    surface: surface,
+    surfaceMuted: surfaceMuted,
+    border: border,
+    shadow: shadow,
+    accent: accent,
+    onAccent: onAccent,
+    carbsColor: carbsColor,
+    fatColor: fatColor,
+    proteinColor: proteinColor,
+    textStrong: textStrong,
+    textMuted: textMuted,
+  );
 
   ColorScheme get colorScheme => ColorScheme(
         brightness: brightness,

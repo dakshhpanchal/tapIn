@@ -333,16 +333,39 @@ class _OpenNutriTrackerAppState extends State<OpenNutriTrackerApp>
         // The friendly-flat canvas, surfaces and macro colours are fixed; only
         // the single vivid accent follows the user. Material You (when enabled)
         // or a picked accent drives that one role, otherwise the brand green.
-        AppPalette light = AppPalette.light;
-        AppPalette dark = AppPalette.dark;
+        AppPalette light = AppPalette.baseLight;
+        AppPalette dark = AppPalette.baseDark;
         if (useMaterialYou && lightDynamic != null && darkDynamic != null) {
-          light = light.withAccent(lightDynamic.harmonized().primary);
-          dark = dark.withAccent(darkDynamic.harmonized().primary);
+          final l = lightDynamic.harmonized();
+          final d = darkDynamic.harmonized();
+          light = light
+              .withAccent(l.primary)
+              .withSurfaces(
+                canvas: l.surface,
+                surface: l.surfaceContainerLowest,
+                surfaceMuted: l.surfaceContainerHigh,
+                border: l.outlineVariant,
+                textStrong: l.onSurface,
+                textMuted: l.onSurfaceVariant,
+              );
+          dark = dark
+              .withAccent(d.primary)
+              .withSurfaces(
+                canvas: d.surface,
+                surface: d.surfaceContainer,
+                surfaceMuted: d.surfaceContainerHigh,
+                border: d.outlineVariant,
+                textStrong: d.onSurface,
+                textMuted: d.onSurfaceVariant,
+              );
         } else if (accentColor != null) {
           final seed = Color(accentColor);
           light = light.withAccent(seed);
           dark = dark.withAccent(seed);
         }
+        // Widgets read these directly, so they must hold what is in use.
+        AppPalette.light = light;
+        AppPalette.dark = dark;
         return _buildMaterialApp(context, light, dark);
       },
     );

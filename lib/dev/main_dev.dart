@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:opennutritracker/core/l10n/app_locales.dart';
 import 'package:opennutritracker/core/data/repository/config_repository.dart';
+import 'package:opennutritracker/core/domain/entity/app_theme_entity.dart';
 import 'package:opennutritracker/core/utils/app_locale_service.dart';
 import 'package:opennutritracker/core/utils/app_locale_sync.dart';
 import 'package:opennutritracker/core/utils/demo/demo_seeder.dart';
@@ -51,7 +52,12 @@ Future<void> main() async {
     clearLocaleSyncSeeded: configRepo.clearLocaleSyncSeeded,
   );
   final savedLocale = localeCode != null ? Locale(localeCode) : null;
+  // Light, because that is how the README screenshots are taken.
+  await configRepo.setConfigAppTheme(AppThemeEntity.light);
   final savedAppTheme = await configRepo.getConfigAppTheme();
+
+  // Lavender, deep indigo and orange from the launcher icon, on a faintly
+  // lavender-tinted canvas.
 
   runAppWithChangeNotifiers(
     true,

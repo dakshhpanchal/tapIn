@@ -261,7 +261,7 @@ class ConfigEntity extends Equatable {
     this.dayStartOffsetMinutes = 0,
     this.dailyWaterGoalMl,
     this.fastingWarningAcknowledged = false,
-    this.useMaterialYou = true,
+    this.useMaterialYou = false,
     this.accentColor,
     this.scannerPortraitLock,
     this.foodSourceToggles = const <String, bool>{},
@@ -383,7 +383,7 @@ class ConfigEntity extends Equatable {
     dayStartOffsetMinutes: _normaliseOffsetMinutes(dbo.dayStartOffsetMinutes),
     dailyWaterGoalMl: _normaliseWaterGoal(dbo.dailyWaterGoalMl),
     fastingWarningAcknowledged: dbo.fastingWarningAcknowledged ?? false,
-    useMaterialYou: dbo.useMaterialYou ?? true,
+    useMaterialYou: dbo.useMaterialYou ?? false,
     accentColor: _normaliseAccentColor(dbo.accentColor),
     scannerPortraitLock: dbo.scannerPortraitLock,
     foodSourceToggles: dbo.foodSourceToggles != null

@@ -422,11 +422,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _SettingsGroup(
               palette: palette,
               tiles: [
-                _SettingsTile(
+                _SettingsSwitchTile(
+                  identifier: 'settings-dark-mode',
                   palette: palette,
-                  icon: Icons.brightness_medium_rounded,
-                  title: S.of(context).settingsThemeLabel,
-                  onTap: () => _showThemeDialog(context, state.appTheme),
+                  icon: Icons.dark_mode_rounded,
+                  title: S.of(context).settingsDarkModeLabel,
+                  value: switch (state.appTheme) {
+                    AppThemeEntity.dark => true,
+                    AppThemeEntity.light => false,
+                    AppThemeEntity.system =>
+                      MediaQuery.platformBrightnessOf(context) ==
+                          Brightness.dark,
+                  },
+                  onChanged: (dark) => _setDarkMode(context, dark),
+                ),
+                _SettingsSwitchTile(
+                  identifier: 'settings-material-you',
+                  palette: palette,
+                  icon: Icons.wallpaper_rounded,
+                  title: S.of(context).settingsMaterialYouLabel,
+                  subtitle: S.of(context).settingsMaterialYouSubtitle,
+                  value: state.useMaterialYou,
+                  onChanged: (on) => _setMaterialYou(context, on),
                 ),
                 _SettingsTile(
                   identifier: 'settings-accent-colour',
@@ -1167,75 +1184,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
-  void _showThemeDialog(BuildContext context, AppThemeEntity currentAppTheme) {
-    AppThemeEntity selectedTheme = currentAppTheme;
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          contentPadding: EdgeInsets.zero,
-          title: Text(S.of(context).settingsThemeLabel),
-          content: StatefulBuilder(
-            builder:
-                (
-                  BuildContext context,
-                  void Function(void Function()) setState,
-                ) {
-                  return RadioGroup(
-                    groupValue: selectedTheme,
-                    onChanged: (value) {
-                      setState(() {
-                        selectedTheme = value as AppThemeEntity;
-                      });
-                    },
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        RadioListTile(
-                          title: Text(
-                            S.of(context).settingsThemeSystemDefaultLabel,
-                          ),
-                          value: AppThemeEntity.system,
-                        ),
-                        RadioListTile(
-                          title: Text(S.of(context).settingsThemeLightLabel),
-                          value: AppThemeEntity.light,
-                        ),
-                        RadioListTile(
-                          title: Text(S.of(context).settingsThemeDarkLabel),
-                          value: AppThemeEntity.dark,
-                        ),
-                      ],
-                    ),
-                  );
-                },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text(S.of(context).dialogCancelLabel),
-            ),
-            TextButton(
-              onPressed: () async {
-                _settingsBloc.setAppTheme(selectedTheme);
-                _settingsBloc.add(LoadSettingsEvent());
-                setState(() {
-                  // Update Theme
-                  Provider.of<ThemeModeProvider>(
-                    context,
-                    listen: false,
-                  ).updateTheme(selectedTheme);
-                });
-                Navigator.of(context).pop();
-              },
-              child: Text(S.of(context).dialogOKLabel),
-            ),
-          ],
-        );
-      },
-    );
+  void _setDarkMode(BuildContext context, bool dark) {
+    final theme = dark ? AppThemeEntity.dark : AppThemeEntity.light;
+    _settingsBloc.setAppTheme(theme);
+    Provider.of<ThemeModeProvider>(context, listen: false).updateTheme(theme);
+    _settingsBloc.add(LoadSettingsEvent());
+  }
+
+  void _setMaterialYou(BuildContext context, bool on) {
+    _settingsBloc.setUseMaterialYou(on);
+    Provider.of<ThemeModeProvider>(
+      context,
+      listen: false,
+    ).updateUseMaterialYou(on);
+    _settingsBloc.add(LoadSettingsEvent());
   }
 
   String? _localeDisplayName(String? code) => shippedLocales[code];
