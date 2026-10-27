@@ -1,38 +1,39 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:opennutritracker/core/presentation/widgets/error_dialog.dart';
 import 'package:opennutritracker/generated/l10n.dart';
 
 Widget _wrap(Widget child) => MaterialApp(
-  localizationsDelegates: const [
-    S.delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-  ],
+  localizationsDelegates: S.localizationsDelegates,
   supportedLocales: S.supportedLocales,
   home: Scaffold(body: child),
 );
 
 void main() {
-  testWidgets('Retry carries the identifier the caller gives it', (
-    tester,
-  ) async {
-    var retries = 0;
+  testWidgets('Retry alone by default', (tester) async {
+    var retried = 0;
+    await tester.pumpWidget(
+      _wrap(ErrorDialog(errorText: 'Oops', onRefreshPressed: () => retried++)),
+    );
+    expect(find.text('Oops'), findsOneWidget);
+    expect(find.byType(OutlinedButton), findsNothing);
+    await tester.tap(find.byType(FilledButton));
+    expect(retried, 1);
+  });
+
+  testWidgets('an optional second action sits under Retry', (tester) async {
+    var added = 0;
     await tester.pumpWidget(
       _wrap(
         ErrorDialog(
-          errorText: 'Something failed',
-          onRefreshPressed: () => retries++,
-          retryIdentifier: 'search-all-retry',
+          errorText: 'Not found',
+          onRefreshPressed: () {},
+          secondaryLabel: 'Add this product',
+          onSecondaryPressed: () => added++,
         ),
       ),
     );
-
-    final retry = find.bySemanticsIdentifier('search-all-retry');
-    expect(retry, findsOneWidget);
-    await tester.tap(retry);
-    expect(retries, 1);
+    await tester.tap(find.text('Add this product'));
+    expect(added, 1);
   });
 }

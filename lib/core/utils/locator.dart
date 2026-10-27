@@ -131,6 +131,8 @@ import 'package:opennutritracker/features/profile/presentation/utils/profile_swi
 import 'package:opennutritracker/features/recipes/presentation/bloc/recipe_builder_bloc.dart';
 import 'package:opennutritracker/features/recipes/presentation/bloc/recipe_detail_bloc.dart';
 import 'package:opennutritracker/features/recipes/presentation/bloc/recipes_bloc.dart';
+import 'package:opennutritracker/features/off_account/data/off_account_storage.dart';
+import 'package:opennutritracker/features/off_account/data/off_contribution_service.dart';
 import 'package:opennutritracker/features/scanner/domain/usecase/search_product_by_barcode_usecase.dart';
 import 'package:opennutritracker/features/scanner/presentation/scanner_bloc.dart';
 import 'package:opennutritracker/features/settings/domain/usecase/download_sample_csv_usecase.dart';
@@ -162,6 +164,10 @@ Future<void> initLocator() async {
     () => secureAppStorageProvider,
   );
   locator.registerLazySingleton<HiveDBProvider>(() => hiveDBProvider);
+  locator.registerLazySingleton<OffAccountStorage>(() => OffAccountStorage());
+  locator.registerLazySingleton<OffContributionService>(
+    () => OffContributionService(),
+  );
   locator.registerLazySingleton<AiCredentialStorage>(
     () => AiCredentialStorage(),
   );

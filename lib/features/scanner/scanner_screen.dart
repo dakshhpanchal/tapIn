@@ -1,6 +1,15 @@
 import 'dart:async';
 
+import 'package:opennutritracker/core/data/data_source/custom_meal_data_source.dart';
+import 'package:opennutritracker/features/off_account/data/off_account_storage.dart';
+import 'package:opennutritracker/features/off_account/data/off_contribution_service.dart';
+import 'package:opennutritracker/features/off_account/presentation/off_contribution_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:opennutritracker/core/domain/usecase/get_config_usecase.dart';
+import 'package:opennutritracker/features/add_meal/domain/entity/meal_entity.dart';
+import 'package:opennutritracker/features/add_meal/domain/entity/meal_nutriments_entity.dart';
+import 'package:opennutritracker/features/edit_meal/presentation/edit_meal_screen.dart';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logging/logging.dart';
@@ -145,17 +154,128 @@ class _ScannerScreenState extends State<ScannerScreen>
             backgroundColor: palette.canvas,
             appBar: AppBar(backgroundColor: palette.canvas),
             body: Center(
-              child: ErrorDialog(
-                errorText: state.type == ScannerFailedStateType.productNotFound
-                    ? S.of(context).errorProductNotFound
-                    : S.of(context).errorFetchingProductData,
-                onRefreshPressed: _onRefreshButtonPressed,
+              child: SingleChildScrollView(
+                child: ErrorDialog(
+                  errorText: _failureMessage(context, state.type),
+                  onRefreshPressed: _onRefreshButtonPressed,
+                  // Not in the database: let the user add it, with the scanned
+                  // barcode attached, so scanning it again finds their entry.
+                  secondaryLabel:
+                      state.type == ScannerFailedStateType.productNotFound
+                      ? S.of(context).scannerAddProductAction
+                      : null,
+                  onSecondaryPressed:
+                      state.type == ScannerFailedStateType.productNotFound
+                      ? _addMissingProduct
+                      : null,
+                  secondaryIdentifier: 'scanner-add-product',
+                ),
               ),
             ),
           );
         }
         return const SizedBox();
       },
+    );
+  }
+
+  String _failureMessage(BuildContext context, ScannerFailedStateType type) {
+    final s = S.of(context);
+    return switch (type) {
+      ScannerFailedStateType.productNotFound =>
+        '${s.errorProductNotFound}\n\n${s.scannerProductNotFoundHint}',
+      ScannerFailedStateType.busy => s.errorOffBusy,
+      ScannerFailedStateType.offline => s.errorOffline,
+      ScannerFailedStateType.error => s.errorFetchingProductData,
+    };
+  }
+
+  /// Opens the new-food form with the scanned barcode filled in. When it is
+  /// saved the barcode belongs to the user's own food, and the lookup is run
+  /// again so the new entry is found straight away.
+  Future<void> _addMissingProduct() async {
+    final barcode = _scannedBarcode;
+    if (barcode == null) return;
+    final config = await locator<GetConfigUsecase>().getConfig();
+    if (!mounted) return;
+    await Navigator.of(context).pushNamed(
+      NavigationOptions.editMealRoute,
+      arguments: EditMealScreenArguments(
+        _day!,
+        MealEntity(
+          code: barcode,
+          name: null,
+          url: null,
+          mealQuantity: null,
+          mealUnit: 'gml',
+          servingQuantity: null,
+          servingUnit: 'gml',
+          servingSize: '',
+          nutriments: MealNutrimentsEntity.empty(),
+          source: MealSourceEntity.custom,
+        ),
+        _intakeTypeEntity!,
+        config.usesImperialFoodUnits,
+        editOnly: true,
+      ),
+    );
+    if (!mounted) return;
+    await _offerToShare(barcode);
+    if (!mounted) return;
+    _scannerBloc.add(ScannerLoadProductEvent(barcode: barcode));
+  }
+
+  /// After a missing product was saved, offers to add it to Open Food Facts
+  /// so the next person scanning it finds it. Only when logged in, and only
+  /// when the user agrees.
+  Future<void> _offerToShare(String barcode) async {
+    final saved = locator<CustomMealDataSource>()
+        .getAllCustomMeals()
+        .where((dbo) => dbo.code == barcode)
+        .firstOrNull;
+    if (saved == null) return;
+    final loggedIn = await locator<OffAccountStorage>().read() != null;
+    if (!mounted) return;
+    if (!loggedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Log in to Open Food Facts in Settings to share products like '
+            'this one.',
+          ),
+        ),
+      );
+      return;
+    }
+    final share = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Share on Open Food Facts?'),
+        content: const Text(
+          'Add this product to the public database so others can find it '
+          'when they scan it. You can review everything before it is sent.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Not now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Review'),
+          ),
+        ],
+      ),
+    );
+    if (share != true || !mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<bool>(
+        builder: (_) => OffContributionScreen(
+          initial: OffProductSubmission.fromMeal(
+            MealEntity.fromMealDBO(saved),
+          ),
+        ),
+      ),
     );
   }
 
@@ -244,8 +364,13 @@ class _ScannerScreenState extends State<ScannerScreen>
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
                   shape: Dimens.shapeM,
-                  side: BorderSide(color: palette.border, width: Dimens.hairline),
-                  padding: const EdgeInsets.symmetric(vertical: Dimens.spacing16),
+                  side: BorderSide(
+                    color: palette.border,
+                    width: Dimens.hairline,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: Dimens.spacing16,
+                  ),
                 ),
                 icon: const Icon(Icons.keyboard_rounded),
                 label: Text(S.of(context).scannerManualEntryButton),
@@ -292,7 +417,8 @@ class _ScannerScreenState extends State<ScannerScreen>
             Semantics(
               identifier: 'scanner-manual-entry-submit',
               child: TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(controller.text.trim()),
+                onPressed: () =>
+                    Navigator.of(dialogContext).pop(controller.text.trim()),
                 child: Text(S.of(dialogContext).scannerManualEntrySubmit),
               ),
             ),
@@ -376,15 +502,15 @@ class ScannerScreenArguments {
     DateTime forDay,
     IntakeTypeEntity forIntakeType, {
     this.initialBarcode,
-  })  : day = forDay,
-        intakeTypeEntity = forIntakeType,
-        pickMode = false;
+  }) : day = forDay,
+       intakeTypeEntity = forIntakeType,
+       pickMode = false;
 
   /// Opens the scanner in "pick" mode: on a successful product load it pops
   /// the resulting [MealEntity] back to the caller instead of routing into
   /// the meal-detail logging screen. Used by the recipe ingredient picker.
   ScannerScreenArguments.pick({this.initialBarcode})
-      : day = null,
-        intakeTypeEntity = null,
-        pickMode = true;
+    : day = null,
+      intakeTypeEntity = null,
+      pickMode = true;
 }

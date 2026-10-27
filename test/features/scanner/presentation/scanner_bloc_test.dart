@@ -1,3 +1,7 @@
+import 'package:opennutritracker/features/scanner/data/off_unavailable_exception.dart';
+import 'package:http/http.dart' as http;
+import 'dart:io';
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:opennutritracker/core/domain/entity/app_theme_entity.dart';
 import 'package:opennutritracker/core/domain/entity/config_entity.dart';
@@ -35,12 +39,14 @@ void main() {
       blocs.clear();
     });
 
-    test('a not-found barcode reports productNotFound, not a fetch error',
-        () async {
-      final state = await scanFailingWith(ProductNotFoundException());
+    test(
+      'a not-found barcode reports productNotFound, not a fetch error',
+      () async {
+        final state = await scanFailingWith(ProductNotFoundException());
 
-      expect(state.type, ScannerFailedStateType.productNotFound);
-    });
+        expect(state.type, ScannerFailedStateType.productNotFound);
+      },
+    );
 
     test('any other failure reports a generic error', () async {
       final state = await scanFailingWith(Exception('OFF HTTP 500'));
@@ -104,16 +110,78 @@ void main() {
     searchUseCase.error = Exception('OFF HTTP 500');
     bloc.add(const ScannerLoadProductEvent(barcode: '03299289'));
     await bloc.stream
-        .firstWhere((state) =>
-            state is ScannerFailedState &&
-            state.type == ScannerFailedStateType.error)
+        .firstWhere(
+          (state) =>
+              state is ScannerFailedState &&
+              state.type == ScannerFailedStateType.error,
+        )
         .timeout(_settleTimeout);
 
     await subscription.cancel();
 
-    expect(
-      seen.whereType<ScannerFailedState>().map((state) => state.type),
-      [ScannerFailedStateType.productNotFound, ScannerFailedStateType.error],
+    expect(seen.whereType<ScannerFailedState>().map((state) => state.type), [
+      ScannerFailedStateType.productNotFound,
+      ScannerFailedStateType.error,
+    ]);
+  });
+
+  group('ScannerBloc failure messages', () {
+    final blocs = <ScannerBloc>[];
+    tearDown(() async {
+      for (final bloc in blocs) {
+        await bloc.close();
+      }
+      blocs.clear();
+    });
+
+    Future<ScannerFailedStateType> typeFor(Object error) async {
+      final useCase = _FakeSearchUseCase(error);
+      final bloc = ScannerBloc(useCase, _FakeGetConfigUsecase());
+      blocs.add(bloc);
+      return (await _failureFor(bloc, useCase, '03299289')).type;
+    }
+
+    test(
+      'an overloaded or rate-limiting Open Food Facts reads as busy',
+      () async {
+        expect(
+          await typeFor(const OffUnavailableException(429)),
+          ScannerFailedStateType.busy,
+        );
+        expect(
+          await typeFor(const OffUnavailableException(503)),
+          ScannerFailedStateType.busy,
+        );
+      },
+    );
+
+    test('no connection or a timeout reads as offline', () async {
+      expect(
+        await typeFor(const SocketException('no route')),
+        ScannerFailedStateType.offline,
+      );
+      expect(
+        await typeFor(http.ClientException('lost')),
+        ScannerFailedStateType.offline,
+      );
+      expect(
+        await typeFor(TimeoutException('slow')),
+        ScannerFailedStateType.offline,
+      );
+    });
+
+    test(
+      'a missing product is still not-found, and the rest stay generic',
+      () async {
+        expect(
+          await typeFor(ProductNotFoundException()),
+          ScannerFailedStateType.productNotFound,
+        );
+        expect(
+          await typeFor(const FormatException('bad json')),
+          ScannerFailedStateType.error,
+        );
+      },
     );
   });
 }
@@ -158,8 +226,11 @@ Future<ScannerFailedState> _failureFor(
   bloc.add(ScannerLoadProductEvent(barcode: barcode));
   final state = await settled;
 
-  expect(searchUseCase.calls, [barcode],
-      reason: 'the barcode should have reached the search use case');
+  expect(
+    searchUseCase.calls,
+    [barcode],
+    reason: 'the barcode should have reached the search use case',
+  );
   expect(state, isA<ScannerFailedState>());
   return state as ScannerFailedState;
 }
@@ -187,12 +258,8 @@ class _FakeSearchUseCase implements SearchProductByBarcodeUseCase {
 /// default.
 class _FakeGetConfigUsecase implements GetConfigUsecase {
   @override
-  Future<ConfigEntity> getConfig() async => const ConfigEntity(
-        true,
-        true,
-        false,
-        AppThemeEntity.system,
-      );
+  Future<ConfigEntity> getConfig() async =>
+      const ConfigEntity(true, true, false, AppThemeEntity.system);
 
   @override
   dynamic noSuchMethod(Invocation invocation) =>

@@ -44,6 +44,7 @@ import 'package:opennutritracker/generated/l10n.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:opennutritracker/features/off_account/presentation/off_account_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:opennutritracker/features/settings/presentation/widgets/diary_day_boundary_dialog.dart';
 import 'package:opennutritracker/features/settings/presentation/widgets/kcal_adjustment_dialog.dart';
@@ -515,6 +516,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _SettingsGroup(
               palette: palette,
               tiles: [
+                _SettingsTile(
+                  identifier: 'settings-off-account',
+                  palette: palette,
+                  icon: Icons.cloud_upload_rounded,
+                  title: 'Open Food Facts account',
+                  subtitle: 'Add missing products and send corrections',
+                  onTap: () => showOffAccountDialog(context),
+                ),
                 _SettingsTile(
                   identifier: 'settings-food-sources',
                   palette: palette,

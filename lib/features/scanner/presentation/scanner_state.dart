@@ -42,4 +42,16 @@ class ScannerFailedState extends ScannerState {
   List<Object?> get props => [type];
 }
 
-enum ScannerFailedStateType { productNotFound, error }
+enum ScannerFailedStateType {
+  /// Open Food Facts has no such product.
+  productNotFound,
+
+  /// Open Food Facts is busy, rate limiting this connection, or down.
+  busy,
+
+  /// The request never got through: no connection, or it timed out.
+  offline,
+
+  /// Anything else.
+  error,
+}

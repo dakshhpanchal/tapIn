@@ -1,3 +1,5 @@
+import 'package:opennutritracker/features/off_account/data/off_contribution_service.dart';
+import 'package:opennutritracker/features/off_account/presentation/off_contribution_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -362,6 +364,20 @@ class _MealDetailScreenState extends State<MealDetailScreen> {
             ),
           ),
           actions: [
+            if (meal.source == MealSourceEntity.off &&
+                (meal.code ?? '').isNotEmpty)
+              IconButton(
+                tooltip: 'Correct on Open Food Facts',
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<bool>(
+                    builder: (_) => OffContributionScreen(
+                      initial: OffProductSubmission.fromMeal(meal),
+                      isCorrection: true,
+                    ),
+                  ),
+                ),
+                icon: const Icon(Icons.flag_outlined),
+              ),
             FavouriteToggleButton(
               meal: meal,
               semanticsIdentifier: 'meal-detail-favourite',

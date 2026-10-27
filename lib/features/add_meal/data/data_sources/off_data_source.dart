@@ -10,11 +10,19 @@ import 'package:opennutritracker/core/utils/retry_util.dart';
 import 'package:opennutritracker/core/utils/supported_language.dart';
 import 'package:opennutritracker/features/add_meal/data/dto/off/off_product_response_dto.dart';
 import 'package:opennutritracker/features/add_meal/data/dto/off/off_word_response_dto.dart';
+import 'package:opennutritracker/features/scanner/data/off_unavailable_exception.dart';
 import 'package:opennutritracker/features/scanner/data/product_not_found_exception.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 class OFFDataSource {
   static const _timeoutDuration = Duration(seconds: 60);
+
+  /// A scan waits on this, so it gives up on a silent connection far sooner
+  /// than a search does; the retries cover a slow patch.
+  static const _barcodeTimeout = Duration(seconds: 15);
+
+  /// The longest pause between barcode retries, whatever the server asks for.
+  static const _maxBarcodeRetryDelay = Duration(seconds: 10);
 
   /// How long to skip Search-a-licious after a failure before probing it
   /// again. Its outages historically last hours, and every probe of a dead
@@ -39,8 +47,8 @@ class OFFDataSource {
   OFFDataSource({
     http.Client Function()? clientFactory,
     DateTime Function()? now,
-  })  : _clientFactory = clientFactory ?? http.Client.new,
-        _now = now ?? DateTime.now;
+  }) : _clientFactory = clientFactory ?? http.Client.new,
+       _now = now ?? DateTime.now;
 
   /// The app's language as a Search-a-licious relevance context, always with
   /// English appended as a fallback so non-English locales still match the
@@ -89,8 +97,7 @@ class OFFDataSource {
   Future<OFFWordResponseDTO> _fetchWordResults(Uri searchUrl) async {
     final userAgentString = await AppConst.getUserAgentString();
     final httpClient = ONTHttpClient(userAgentString, _clientFactory());
-    final response =
-        await httpClient.get(searchUrl).timeout(_timeoutDuration);
+    final response = await httpClient.get(searchUrl).timeout(_timeoutDuration);
     log.fine('Fetching OFF results from: $searchUrl');
     if (response.statusCode == OFFConst.offHttpSuccessCode) {
       final wordResponse = OFFWordResponseDTO.fromJson(
@@ -110,8 +117,9 @@ class OFFDataSource {
           final searchUrl = OFFConst.getOffBarcodeSearchUri(barcode);
           final userAgentString = await AppConst.getUserAgentString();
           final httpClient = ONTHttpClient(userAgentString, _clientFactory());
-          final response =
-              await httpClient.get(searchUrl).timeout(_timeoutDuration);
+          final response = await httpClient
+              .get(searchUrl)
+              .timeout(_barcodeTimeout);
           log.fine('Fetching OFF result from: $searchUrl');
           if (response.statusCode == OFFConst.offHttpSuccessCode) {
             final productResponse = OFFProductResponseDTO.fromJson(
@@ -122,11 +130,32 @@ class OFFDataSource {
           } else if (response.statusCode == OFFConst.offProductNotFoundCode) {
             log.warning('404 OFF Product not found');
             throw ProductNotFoundException();
+          } else if (OffUnavailableException.isUnavailable(
+            response.statusCode,
+          )) {
+            log.warning('OFF busy or down: ${response.statusCode}');
+            throw OffUnavailableException(
+              response.statusCode,
+              retryAfter: OffUnavailableException.parseRetryAfter(
+                response.headers['retry-after'],
+              ),
+            );
           }
           log.warning('Failed OFF call: ${response.statusCode}');
           throw Exception('OFF HTTP ${response.statusCode}');
         },
         shouldRetry: (e) => e is! ProductNotFoundException,
+        // A rate limit needs a real pause, not the 1 s default: go by what the
+        // server asked for, capped so a scan never hangs for long.
+        delayFor: (error, attempt) {
+          if (error is OffUnavailableException) {
+            final asked = error.retryAfter ?? Duration(seconds: 2 << attempt);
+            return asked > _maxBarcodeRetryDelay
+                ? _maxBarcodeRetryDelay
+                : asked;
+          }
+          return Duration(seconds: 1 << attempt);
+        },
       );
     } catch (exception, stacktrace) {
       log.severe('Exception while getting OFF barcode search $exception');
