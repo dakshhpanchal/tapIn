@@ -35,7 +35,9 @@ It is a fork of [OpenNutriTracker](https://github.com/simonoppowa/OpenNutriTrack
 
 ## Install
 
-tapIn is not on an app store yet. Build the APK yourself (see [Build from source](#build-from-source)) and install it with `adb install` or by opening the file on your phone. It installs next to OpenNutriTracker under its own app id, `com.tapin.app`, and never touches that app's data.
+Download the APK from the [latest release](https://github.com/dakshhpanchal/tapIn/releases/latest) and open it on your phone. Most phones need **arm64-v8a**; older 32-bit phones need **armeabi-v7a**. tapIn is not on an app store. Prefer to build it yourself? See [Build from source](#build-from-source).
+
+It installs next to OpenNutriTracker under its own app id, `com.tapin.app`, and never touches that app's data. The release notes list the signing certificate's SHA-256 so you can check the file.
 
 ## Screenshots
 
