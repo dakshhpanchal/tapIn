@@ -115,15 +115,16 @@ WeightLogEntity _wl(DateTime date, double kg) =>
     WeightLogEntity(date: date, weightKg: kg);
 
 void main() {
-  // The bloc anchors every window on midnight-today; mirror that here so the
-  // expected ranges line up with what the bloc computes.
+  // The bloc ends every window on the last finished day (yesterday), since
+  // today is still being logged. `today` below names that last counted day, so
+  // the expectations read as before.
   final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
+  final today = DateTime(now.year, now.month, now.day - 1);
   // The bloc ends ranges at the close of the day so a time-stamped tracked
-  // day (today's) isn't excluded.
-  final endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59);
+  // day isn't excluded.
+  final endOfToday = DateTime(now.year, now.month, now.day - 1, 23, 59, 59);
   final endOfPriorWeek =
-      DateTime(now.year, now.month, now.day - 7, 23, 59, 59);
+      DateTime(now.year, now.month, now.day - 8, 23, 59, 59);
 
   group('TrendsBloc', () {
     late _FakeGetTrackedDayUsecase trackedDay;
@@ -251,7 +252,7 @@ void main() {
       // midnight after a spring-forward is 23:00 on the 51st day, which the
       // bloc's calendar-day count (#1207) would report as 52.
       weightLog.result = [
-        _wl(DateTime(today.year, today.month, today.day - 50), 80),
+        _wl(DateTime(now.year, now.month, now.day - 50), 80),
       ];
       final emitted = await load(const LoadTrendsEvent(rangeDays: 0));
       final loaded = emitted.last as TrendsLoaded;
@@ -263,7 +264,7 @@ void main() {
       // Only a few days of history: the window is the exact span, so the
       // charts begin at the first entry instead of showing blank days before.
       weightLog.result = [
-        _wl(DateTime(today.year, today.month, today.day - 5), 80),
+        _wl(DateTime(now.year, now.month, now.day - 5), 80),
       ];
       final emitted = await load(const LoadTrendsEvent(rangeDays: 0));
       expect((emitted.last as TrendsLoaded).windowDays, 6); // not floored to 30

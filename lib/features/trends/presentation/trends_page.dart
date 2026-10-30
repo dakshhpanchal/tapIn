@@ -72,6 +72,13 @@ class _TrendsView extends StatelessWidget {
             ),
             const SizedBox(height: Dimens.spacing16),
             _RangeSelector(rangeDays: state.rangeDays),
+            const SizedBox(height: Dimens.spacing8),
+            Text(
+              S.of(context).trendsCompletedDaysNote,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: palette.textMuted,
+                  ),
+            ),
             const SizedBox(height: Dimens.spacing16),
             _SummaryCard(
               days: state.days,
@@ -157,8 +164,7 @@ class _StreakCard extends StatelessWidget {
     final accent = Theme.of(context).colorScheme.primary;
     final errorColor = Theme.of(context).colorScheme.error;
     final text = Theme.of(context).textTheme;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final today = trendsEndDay(); // the last completed day
     final windowStart =
         DateTime(today.year, today.month, today.day - (rangeDays - 1));
     final weekEnd = today;
@@ -268,8 +274,7 @@ class _CaloriesTrendCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final accent = Theme.of(context).colorScheme.primary;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final today = trendsEndDay(); // the last completed day
     final byDay = {for (final d in days) DateTime(d.day.year, d.day.month, d.day.day): d};
     // Full per-day series across the window; missing days contribute 0 tracked.
     // Values are converted to the user's energy unit up front (#1362), so the
@@ -399,8 +404,7 @@ class _WaterTrendCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final color = palette.proteinColor;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final today = trendsEndDay(); // the last completed day
     final spots = <FlSpot>[];
     var sum = 0;
     var loggedDays = 0;

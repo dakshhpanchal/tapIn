@@ -1,3 +1,4 @@
+import 'package:opennutritracker/features/gym/presentation/gym_progress_screen.dart';
 import 'package:opennutritracker/core/presentation/widgets/confirm_dialog.dart';
 import 'package:opennutritracker/generated/l10n.dart';
 import 'package:flutter/material.dart';
@@ -55,6 +56,21 @@ class _GymPageState extends State<GymPage> {
             _RestDayCard(restDays: state.restDays),
             const SizedBox(height: Dimens.spacing16),
             _WeekCard(sessions: state.sessions),
+            const SizedBox(height: Dimens.spacing8),
+            AppCard(
+              padding: EdgeInsets.zero,
+              child: ListTile(
+                leading: const Icon(Icons.show_chart_rounded),
+                title: const Text('Progress'),
+                subtitle: const Text('Consistency, strength and records'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const GymProgressScreen(),
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(height: Dimens.spacing16),
             Row(
               children: [
@@ -348,9 +364,7 @@ class _SessionTile extends StatelessWidget {
             ),
             const SizedBox(height: 2),
             Text(
-              // Volume is kg moved; plate-only workouts have none to show.
-              '${sessionSetCount(session)} sets'
-              '${sessionVolume(session) > 0 ? ' · ${volumeText(sessionVolume(session), useLb)}' : ''}',
+              '${sessionSetCount(session)} sets',
               style: text.bodySmall?.copyWith(color: mutedColor(context)),
             ),
             Text(

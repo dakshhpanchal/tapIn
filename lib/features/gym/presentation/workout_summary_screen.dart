@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:opennutritracker/core/presentation/widgets/app_card.dart';
 import 'package:opennutritracker/core/styles/dimens.dart';
 import 'package:opennutritracker/features/gym/domain/gym_calc.dart';
@@ -13,14 +12,16 @@ class WorkoutSummaryScreen extends StatelessWidget {
 
   static String _recordText(Set<RecordKind> kinds) => [
     if (kinds.contains(RecordKind.weight)) 'Heaviest weight',
-    if (kinds.contains(RecordKind.oneRepMax)) 'Est. 1RM',
-    if (kinds.contains(RecordKind.volume)) 'Volume',
   ].join(' · ');
 
   @override
   Widget build(BuildContext context) {
     final session = finished.session;
-    final useLb = context.read<GymCubit>().state.useLb;
+    // Only a heavier weight counts as a record; the estimates are not shown.
+    final weightRecords = {
+      for (final r in finished.records.entries)
+        if (r.value.contains(RecordKind.weight)) r.key: r.value,
+    };
     final text = Theme.of(context).textTheme;
     final accent = Theme.of(context).colorScheme.primary;
     return Scaffold(
@@ -45,12 +46,6 @@ class WorkoutSummaryScreen extends StatelessWidget {
                   runSpacing: Dimens.spacing12,
                   children: [
                     _stat(context, 'Time', formatDuration(session.duration)),
-                    if (sessionVolume(session) > 0)
-                      _stat(
-                        context,
-                        'Volume',
-                        volumeText(sessionVolume(session), useLb),
-                      ),
                     _stat(context, 'Sets', '${sessionSetCount(session)}'),
                     _stat(context, 'Exercises', '${session.exercises.length}'),
                   ],
@@ -58,7 +53,7 @@ class WorkoutSummaryScreen extends StatelessWidget {
               ],
             ),
           ),
-          if (finished.records.isNotEmpty) ...[
+          if (weightRecords.isNotEmpty) ...[
             const SizedBox(height: Dimens.spacing16),
             AppCard(
               padding: const EdgeInsets.all(Dimens.spacing20),
@@ -74,7 +69,7 @@ class WorkoutSummaryScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: Dimens.spacing12),
                   for (final e in session.exercises)
-                    if (finished.records[e.exerciseId] case final kinds?)
+                    if (weightRecords[e.exerciseId] case final kinds?)
                       Padding(
                         padding: const EdgeInsets.only(bottom: Dimens.spacing8),
                         child: Column(

@@ -55,7 +55,7 @@ class ExerciseProgressScreen extends StatelessWidget {
                 i.toDouble(),
                 plates
                     ? history[i].bestWeightKg
-                    : toDisplayWeight(history[i].oneRepMaxKg, useLb),
+                    : toDisplayWeight(history[i].bestWeightKg, useLb),
               ),
           ];
           final maxY = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
@@ -74,19 +74,6 @@ class ExerciseProgressScreen extends StatelessWidget {
                       '${weightShown(maxOf((p) => p.bestWeightKg), plates: plates, useLb: useLb)} '
                           '$unit',
                     ),
-                    if (!plates) ...[
-                      _stat(
-                        context,
-                        'Est. 1RM',
-                        '${weightText(maxOf((p) => p.oneRepMaxKg), useLb)} '
-                            '$unit',
-                      ),
-                      _stat(
-                        context,
-                        'Best volume',
-                        volumeText(maxOf((p) => p.volumeKg), useLb),
-                      ),
-                    ],
                     _stat(context, 'Sessions', '${history.length}'),
                   ],
                 ),
@@ -98,7 +85,7 @@ class ExerciseProgressScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      plates ? 'Heaviest ($unit)' : 'Estimated 1RM ($unit)',
+                      'Heaviest set ($unit)',
                       style: text.titleMedium,
                     ),
                     const SizedBox(height: Dimens.spacing16),
@@ -150,8 +137,7 @@ class ExerciseProgressScreen extends StatelessWidget {
                   title: Text(dateText(p.date)),
                   subtitle: Text(
                     'Heaviest ${weightShown(p.bestWeightKg, plates: plates, useLb: useLb)} '
-                    '$unit'
-                    '${plates ? '' : ' · volume ${volumeText(p.volumeKg, useLb)}'}',
+                    '$unit × ${p.topReps}',
                     style: TextStyle(color: mutedColor(context)),
                   ),
                 ),

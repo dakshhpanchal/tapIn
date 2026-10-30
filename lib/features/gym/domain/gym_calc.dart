@@ -42,6 +42,20 @@ double bestOneRepMax(WorkoutExercise e) => workingSets(e).fold(
       : m,
 );
 
+/// The heaviest finished working set of [e], with the most reps among sets at
+/// that weight: the number to compare from one workout to the next.
+({double weightKg, int reps}) topSet(WorkoutExercise e) {
+  var weight = 0.0;
+  var reps = 0;
+  for (final s in workingSets(e)) {
+    if (s.weightKg > weight || (s.weightKg == weight && s.reps > reps)) {
+      weight = s.weightKg;
+      reps = s.reps;
+    }
+  }
+  return (weightKg: weight, reps: reps);
+}
+
 /// One point on an exercise's progress chart: how that exercise went in one
 /// finished session.
 typedef ExercisePoint = ({
@@ -49,6 +63,7 @@ typedef ExercisePoint = ({
   double bestWeightKg,
   double oneRepMaxKg,
   double volumeKg,
+  int topReps,
 });
 
 /// [exerciseId]'s history across finished [sessions], oldest first. Sessions
@@ -67,6 +82,7 @@ List<ExercisePoint> exerciseHistory(
         bestWeightKg: bestWeight(e),
         oneRepMaxKg: bestOneRepMax(e),
         volumeKg: exerciseVolume(e),
+        topReps: topSet(e).reps,
       ));
     }
   }
@@ -149,4 +165,139 @@ String formatWeight(double value) {
       : rounded.toStringAsFixed(
           rounded * 10 == (rounded * 10).roundToDouble() ? 1 : 2,
         );
+}
+
+/// The Monday of the week [d] falls in, as a date.
+DateTime weekStartOf(DateTime d) =>
+    DateTime(d.year, d.month, d.day - (d.weekday - DateTime.monday));
+
+typedef WeekCount = ({DateTime weekStart, int count});
+
+/// Workouts finished in each of the last [weeks] weeks, oldest first, the last
+/// entry being the week of [now].
+List<WeekCount> workoutsPerWeek(
+  Iterable<WorkoutSession> sessions,
+  DateTime now, {
+  int weeks = 12,
+}) {
+  final thisWeek = weekStartOf(now);
+  final counts = <DateTime, int>{};
+  for (final s in sessions) {
+    if (!s.isFinished) continue;
+    final w = weekStartOf(s.startedAt);
+    counts[w] = (counts[w] ?? 0) + 1;
+  }
+  return [
+    for (var i = weeks - 1; i >= 0; i--)
+      (
+        weekStart: DateTime(thisWeek.year, thisWeek.month, thisWeek.day - 7 * i),
+        count:
+            counts[DateTime(
+              thisWeek.year,
+              thisWeek.month,
+              thisWeek.day - 7 * i,
+            )] ??
+            0,
+      ),
+  ];
+}
+
+/// Weeks in a row with at least one workout. The current week is not held
+/// against the streak while it is still empty: counting starts from last week.
+int workoutWeekStreak(List<WeekCount> weeks) {
+  var i = weeks.length - 1;
+  if (i >= 0 && weeks[i].count == 0) i--;
+  var streak = 0;
+  for (; i >= 0 && weeks[i].count > 0; i--) {
+    streak++;
+  }
+  return streak;
+}
+
+typedef TopSet = ({double weightKg, int reps});
+
+/// How one exercise has moved from its first logged session to its latest, as
+/// the heaviest set actually done each time (weight and reps). For plate
+/// machines the weight is the plate setting.
+typedef ExerciseGain = ({
+  String id,
+  String name,
+  bool plates,
+  int sessions,
+  TopSet first,
+  TopSet latest,
+});
+
+/// Exercises done in at least two finished sessions, biggest gain first.
+List<ExerciseGain> exerciseGains(Iterable<WorkoutSession> sessions) {
+  final ordered = sessions.where((s) => s.isFinished).toList()
+    ..sort((a, b) => a.startedAt.compareTo(b.startedAt));
+  final sets = <String, List<TopSet>>{};
+  final names = <String, String>{};
+  final plateFlags = <String, bool>{};
+  for (final s in ordered) {
+    for (final e in s.exercises) {
+      if (workingSets(e).isEmpty) continue;
+      final top = topSet(e);
+      if (top.weightKg <= 0 && top.reps <= 0) continue;
+      sets.putIfAbsent(e.exerciseId, () => []).add(top);
+      names[e.exerciseId] = e.name;
+      plateFlags[e.exerciseId] = e.plates;
+    }
+  }
+  final gains = <ExerciseGain>[
+    for (final entry in sets.entries)
+      if (entry.value.length >= 2)
+        (
+          id: entry.key,
+          name: names[entry.key]!,
+          plates: plateFlags[entry.key]!,
+          sessions: entry.value.length,
+          first: entry.value.first,
+          latest: entry.value.last,
+        ),
+  ];
+  // Heavier first; at the same weight, more reps.
+  double change(ExerciseGain g) => g.first.weightKg > 0
+      ? (g.latest.weightKg - g.first.weightKg) / g.first.weightKg
+      : 0;
+  gains.sort((a, b) {
+    final c = change(b).compareTo(change(a));
+    return c != 0
+        ? c
+        : (b.latest.reps - b.first.reps).compareTo(a.latest.reps - a.first.reps);
+  });
+  return gains;
+}
+
+typedef RecordEntry = ({
+  DateTime date,
+  String exerciseName,
+  Set<RecordKind> kinds,
+});
+
+/// The most recent new heaviest weights, newest first. A first-ever
+/// performance is not a record.
+List<RecordEntry> recentRecords(
+  Iterable<WorkoutSession> sessions, {
+  int limit = 8,
+}) {
+  final ordered = sessions.where((s) => s.isFinished).toList()
+    ..sort((a, b) => a.startedAt.compareTo(b.startedAt));
+  final found = <RecordEntry>[];
+  for (var i = 0; i < ordered.length; i++) {
+    final records = detectRecords(ordered[i], ordered.take(i));
+    for (final e in ordered[i].exercises) {
+      final kinds = {...?records[e.exerciseId]}
+        ..retainAll({RecordKind.weight});
+      if (kinds.isNotEmpty) {
+        found.add((
+          date: ordered[i].startedAt,
+          exerciseName: e.name,
+          kinds: kinds,
+        ));
+      }
+    }
+  }
+  return found.reversed.take(limit).toList();
 }

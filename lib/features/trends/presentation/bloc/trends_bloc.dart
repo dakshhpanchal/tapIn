@@ -9,6 +9,7 @@ import 'package:opennutritracker/core/domain/usecase/get_user_usecase.dart';
 import 'package:opennutritracker/core/domain/usecase/get_water_intake_usecase.dart';
 import 'package:opennutritracker/core/domain/usecase/get_weight_log_usecase.dart';
 import 'package:opennutritracker/core/utils/calc/calendar_day_calc.dart';
+import 'package:opennutritracker/features/trends/presentation/trends_calc.dart';
 
 part 'trends_event.dart';
 part 'trends_state.dart';
@@ -45,14 +46,17 @@ class TrendsBloc extends Bloc<TrendsEvent, TrendsState> {
         // Today's tracked day is stamped with the time it was created, so the
         // range end must cover the whole day or today drops out of the result
         // (the range filter is inclusive but compares against this instant).
-        final endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59);
         // rangeDays 0 is the "All" chip: pull a wide window and let the actual
         // span fall out of the earliest data point below.
         final isAll = event.rangeDays == 0;
         final fetchDays = isAll ? 3650 : event.rangeDays;
+        // Food and water stop at yesterday: today is still being logged.
+        final endDay = trendsEndDay(now);
+        final endOfEndDay =
+            DateTime(endDay.year, endDay.month, endDay.day, 23, 59, 59);
         final days = await _getTrackedDayUsecase.getTrackedDaysByRange(
-          today.subtract(Duration(days: fetchDays - 1)),
-          endOfToday,
+          endDay.subtract(Duration(days: fetchDays - 1)),
+          endOfEndDay,
         );
         // The full weight history; the chart windows it for display. This
         // mirrors the weight-history screen, so a reading from weeks ago
@@ -61,8 +65,8 @@ class TrendsBloc extends Bloc<TrendsEvent, TrendsState> {
         weight.sort((a, b) => a.date.compareTo(b.date));
         // The 7 days before this week, for a week-over-week consistency delta.
         final priorWeek = await _getTrackedDayUsecase.getTrackedDaysByRange(
-          today.subtract(const Duration(days: 13)),
-          DateTime(now.year, now.month, now.day - 7, 23, 59, 59),
+          endDay.subtract(const Duration(days: 13)),
+          DateTime(endDay.year, endDay.month, endDay.day - 7, 23, 59, 59),
         );
         final user = await _getUserUsecase.getUserData();
         final config = await _getConfigUsecase.getConfig();

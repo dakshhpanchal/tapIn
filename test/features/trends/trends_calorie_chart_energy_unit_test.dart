@@ -59,7 +59,8 @@ TrendsLoaded _loadedToday() {
     windowDays: 7,
     days: [
       TrackedDayEntity(
-        day: DateTime(now.year, now.month, now.day),
+        // The chart ends on the last finished day, yesterday.
+        day: DateTime(now.year, now.month, now.day - 1),
         calorieGoal: _goalKcal,
         caloriesTracked: _trackedKcal,
       ),

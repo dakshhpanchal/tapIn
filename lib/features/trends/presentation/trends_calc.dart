@@ -2,6 +2,14 @@
 // unit-tested directly. The presentation layer decides what's "on track"
 // (it needs theme colours) and hands the resulting date set in here.
 
+/// The last day Trends counts: yesterday. Today is still being logged, so a
+/// half-filled day would drag the averages, the streak and the charts down;
+/// it joins the numbers once it is over.
+DateTime trendsEndDay([DateTime? now]) {
+  final n = now ?? DateTime.now();
+  return DateTime(n.year, n.month, n.day - 1);
+}
+
 /// Current and longest run of on-track days within [windowStart]..[today]
 /// (both date-only, inclusive). A day not present in [onTrackDays] — whether
 /// off-track or simply untracked — breaks the run. [current] counts the run

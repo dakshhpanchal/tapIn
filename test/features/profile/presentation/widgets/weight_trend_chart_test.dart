@@ -266,4 +266,60 @@ void main() {
     },
     skip: _skipUnless(DateTime(2026, 3, 29), 23, 'spring-forward'),
   );
+
+  group('weight axis labels', () {
+    // A tight range used to print "87 87 88 88": fl_chart also labels both
+    // ends of the axis, at values that are not round, and they rounded onto
+    // their neighbours.
+    testWidgets('only round weights are labelled, each once', (tester) async {
+      WeightTrendChart.clock = () => DateTime(2026, 6, 15, 12);
+      final today = DateTime(2026, 6, 15);
+      final entries = [
+        for (var i = 0; i < 7; i++)
+          _entry(
+            DateTime(today.year, today.month, today.day - 6 + i),
+            86.4 + (i % 3) * 0.3,
+          ),
+      ];
+      final data = await _pumpChart(tester, entries: entries, windowDays: 7);
+      final titles = data.titlesData.leftTitles.sideTitles;
+      final interval = titles.interval!;
+      expect(interval, greaterThanOrEqualTo(1)); // whole kilograms
+
+      // What fl_chart asks for: every step, plus both ends of the axis.
+      final asked = <double>[
+        data.minY,
+        for (
+          var v = (data.minY / interval).ceil() * interval;
+          v <= data.maxY;
+          v += interval
+        )
+          v,
+        data.maxY,
+      ];
+      final shown = <String>[];
+      for (final v in asked) {
+        final w = titles.getTitlesWidget(
+          v,
+          TitleMeta(
+            min: data.minY,
+            max: data.maxY,
+            parentAxisSize: 200,
+            axisPosition: 0,
+            appliedInterval: interval,
+            sideTitles: titles,
+            formattedValue: '$v',
+            axisSide: AxisSide.left,
+            rotationQuarterTurns: 0,
+          ),
+        );
+        if (w is Text) shown.add(w.data!);
+      }
+      expect(shown, isNotEmpty);
+      expect(shown.toSet(), hasLength(shown.length), reason: 'no repeats');
+      for (final label in shown) {
+        expect(double.parse(label), double.parse(label).roundToDouble());
+      }
+    });
+  });
 }

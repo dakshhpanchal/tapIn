@@ -150,6 +150,19 @@ class WeightTrendChart extends StatelessWidget {
         targetY >= (minY - yPadding) &&
         targetY <= (maxY + yPadding);
 
+    // Labels sit only on round values. fl_chart also draws a label at both
+    // ends of an axis, where the value is arbitrary: on a tight range those
+    // rounded to the same number as their neighbours ("87 87 88 88") and the
+    // end date crowded the one before it.
+    final yInterval = _niceInterval(
+      (maxY + yPadding) - (minY - yPadding),
+      small: bodyWeightUnit == BodyWeightUnit.st,
+    );
+    bool onGrid(double value, double interval) {
+      final steps = value / interval;
+      return (steps - steps.round()).abs() < 1e-6;
+    }
+
     final localeTag = Localizations.localeOf(context).toLanguageTag();
     final dateFormat = DateFormat.MMMd(localeTag);
     // ~5 evenly spaced date labels regardless of window length.
@@ -182,12 +195,13 @@ class WeightTrendChart extends StatelessWidget {
                 sideTitles: SideTitles(
                   showTitles: true,
                   reservedSize: 40,
-                  getTitlesWidget: (value, meta) => Text(
-                    value.toStringAsFixed(
-                      bodyWeightUnit == BodyWeightUnit.st ? 1 : 0,
-                    ),
-                    style: theme.textTheme.labelSmall,
-                  ),
+                  interval: yInterval,
+                  getTitlesWidget: (value, meta) => !onGrid(value, yInterval)
+                      ? const SizedBox.shrink()
+                      : Text(
+                          value.toStringAsFixed(yInterval < 1 ? 1 : 0),
+                          style: theme.textTheme.labelSmall,
+                        ),
                 ),
               ),
               bottomTitles: AxisTitles(
@@ -196,6 +210,13 @@ class WeightTrendChart extends StatelessWidget {
                   reservedSize: 28,
                   interval: labelInterval,
                   getTitlesWidget: (value, meta) {
+                    // fl_chart labels every step plus both ends of the axis.
+                    // Today's label always shows; the step before it steps
+                    // aside when it would sit on top of it.
+                    final lastX = (windowDays - 1).toDouble();
+                    if (value != lastX && lastX - value < labelInterval * 0.6) {
+                      return const SizedBox.shrink();
+                    }
                     final day = dayAt(value.toInt());
                     return Padding(
                       padding: const EdgeInsets.only(top: 6),
@@ -255,5 +276,15 @@ class WeightTrendChart extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// A round step (1, 2, 5, 10, ...) that puts about four labels on an axis
+  /// [range] units tall. [small] allows tenths, for stones.
+  static double _niceInterval(double range, {required bool small}) {
+    final raw = range / 4;
+    final steps = small
+        ? const [0.1, 0.2, 0.5, 1.0, 2.0, 5.0]
+        : const [1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0];
+    return steps.firstWhere((s) => s >= raw, orElse: () => steps.last);
   }
 }
