@@ -34,7 +34,11 @@
 </p>
 
 <p align="center">
-  <img alt="Logging a workout: last time's weight is already filled in, each set is ticked off, and the finished workout ends in a summary" src="docs/media/hero.gif" width="640" />
+  <a href="https://github.com/dakshhpanchal/tapIn/releases/download/v1.0.0/tapIn-promo.mp4"><img alt="Logging a workout: last time's weight is already filled in, each set is ticked off, and the finished workout ends in a summary" src="docs/media/hero.gif" width="640" /></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/dakshhpanchal/tapIn/releases/download/v1.0.0/tapIn-promo.mp4"><b>▶ Watch the 66-second tour</b></a> <sub>(1080p, with sound)</sub>
 </p>
 
 tapIn logs what you eat against a calorie and macro target worked out from your body and goal, and runs your lifting plan from the same app. Both show up on the same Home screen, and everything stays on your phone, encrypted. It is for anyone who wants to see the whole picture, food and training, without handing it to a company.
