@@ -58,19 +58,28 @@ class _DashboardWidgetState extends State<DashboardWidget> {
         ? '${S.of(context).kjLabel} ${S.of(context).energyLeftLabel}'
         : S.of(context).kcalLeftLabel;
 
-    if (widget.totalKcalLeft > widget.totalKcalDaily) {
-      kcalValue = widget.totalKcalDaily;
+    // Left or over is the difference of the two whole numbers shown on screen.
+    // Subtracting first and cutting off after made 2651 of 2650 read "0 too much".
+    final goalWhole = widget.totalKcalDaily.roundToDouble();
+    final suppliedWhole = widget.totalKcalSupplied.roundToDouble();
+    final kcalLeft =
+        (widget.totalKcalLeft +
+                (goalWhole - widget.totalKcalDaily) -
+                (suppliedWhole - widget.totalKcalSupplied))
+            .roundToDouble();
+
+    if (kcalLeft > goalWhole) {
+      kcalValue = goalWhole;
       gaugeValue = 0;
-    } else if (widget.totalKcalLeft < 0) {
-      kcalValue = widget.totalKcalLeft.abs();
+    } else if (kcalLeft < 0) {
+      kcalValue = kcalLeft.abs();
       gaugeValue = 1;
       kcalLabelText = usesKilojoules
           ? '${S.of(context).kjLabel} ${S.of(context).energyTooMuchLabel}'
           : S.of(context).kcalTooMuchLabel;
     } else {
-      kcalValue = widget.totalKcalLeft;
-      gaugeValue =
-          (widget.totalKcalDaily - widget.totalKcalLeft) / widget.totalKcalDaily;
+      kcalValue = kcalLeft;
+      gaugeValue = goalWhole > 0 ? (goalWhole - kcalLeft) / goalWhole : 0;
     }
     final displayValue = usesKilojoules ? UnitCalc.kcalToKj(kcalValue) : kcalValue;
     final displaySupplied = usesKilojoules
@@ -83,7 +92,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final palette = isDark ? AppPalette.dark : AppPalette.light;
     final textTheme = Theme.of(context).textTheme;
-    final progressColor = widget.totalKcalLeft < 0
+    final progressColor = kcalLeft < 0
         ? Theme.of(context).colorScheme.error
         : Theme.of(context).colorScheme.primary;
 
@@ -104,7 +113,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                     Expanded(
                       child: _MiniStat(
                         icon: Icons.arrow_downward_rounded,
-                        value: '${displaySupplied.toInt()}',
+                        value: '${displaySupplied.round()}',
                         label: S.of(context).suppliedLabel,
                         color: palette.proteinColor,
                       ),
@@ -112,7 +121,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                     Expanded(
                       child: _MiniStat(
                         icon: Icons.local_fire_department_rounded,
-                        value: '${displayBurned.toInt()}',
+                        value: '${displayBurned.round()}',
                         label: S.of(context).burnedLabel,
                         color: palette.carbsColor,
                         trailing: true,
@@ -123,7 +132,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                 const SizedBox(height: Dimens.spacing16),
                 Semantics(
                   identifier: 'home-kcal-gauge',
-                  label: '${displayValue.toInt()} $kcalLabelText',
+                  label: '${displayValue.round()} $kcalLabelText',
                   hint: S.of(context).settingsKcalGoalInfoLabel,
                   button: true,
                   excludeSemantics: true,
@@ -165,7 +174,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                             AnimatedFlipCounter(
                               duration: const Duration(milliseconds: 800),
                               curve: AppMotion.emphasized,
-                              value: displayValue.toInt(),
+                              value: displayValue.round(),
                               textStyle: textTheme.displaySmall?.copyWith(height: 1),
                             ),
                             const SizedBox(height: 2),
@@ -299,7 +308,7 @@ class _MacroTile extends StatelessWidget {
           ),
           const SizedBox(height: Dimens.spacing12),
           Text(
-            '${intake.toInt()}/${goal.toInt()} g',
+            '${intake.round()}/${goal.round()} g',
             style: textTheme.bodySmall?.copyWith(color: palette.textStrong, fontWeight: FontWeight.w700),
           ),
         ],

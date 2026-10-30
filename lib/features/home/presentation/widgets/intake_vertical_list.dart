@@ -146,9 +146,9 @@ class _IntakeVerticalListState extends State<IntakeVerticalList> {
         : EnergyDisplay.formatWithUnit(context, totalKcal);
     if (widget.showMealMacros && totalKcal > 0) {
       return '$kcalLine\n'
-          '${totalCarbsGram.toInt()} ${S.of(context).carbsLabelShort}  '
-          '${totalFatsGram.toInt()} ${S.of(context).fatLabelShort}  '
-          '${totalProteinsGram.toInt()} ${S.of(context).proteinLabelShort}';
+          '${totalCarbsGram.round()} ${S.of(context).carbsLabelShort}  '
+          '${totalFatsGram.round()} ${S.of(context).fatLabelShort}  '
+          '${totalProteinsGram.round()} ${S.of(context).proteinLabelShort}';
     }
     return kcalLine;
   }

@@ -112,8 +112,8 @@ class _MacroRing extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${intake.isFinite ? intake.toInt() : 0}/'
-                  '${goal.isFinite ? goal.toInt() : 0} g',
+                  '${intake.isFinite ? intake.round() : 0}/'
+                  '${goal.isFinite ? goal.round() : 0} g',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: textTheme.titleSmall?.copyWith(

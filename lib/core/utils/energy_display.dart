@@ -34,7 +34,7 @@ class EnergyDisplay {
   /// Format a stored kcal value as an integer string in the
   /// currently-selected unit (without the unit suffix).
   static String formatValue(BuildContext context, double kcal) {
-    return convert(context, kcal).toInt().toString();
+    return convert(context, kcal).round().toString();
   }
 
   /// Convenience: format a stored kcal value as `"<value> <unit>"`.

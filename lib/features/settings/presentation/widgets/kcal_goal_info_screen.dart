@@ -437,7 +437,7 @@ class _MacroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = S.of(context);
-    final goalKcal = breakdown.totalKcalGoal.toInt();
+    final goalKcal = breakdown.totalKcalGoal.round();
     return _SectionCard(
       title: l10n.kcalGoalInfoMacroSection,
       children: [
@@ -457,17 +457,17 @@ class _MacroCard extends StatelessWidget {
         const Divider(height: Dimens.spacing20),
         _ValueRow(
           label: l10n.carbsLabel,
-          value: '${breakdown.carbsGoalGrams.toInt()} g',
+          value: '${breakdown.carbsGoalGrams.round()} g',
           emphasized: true,
         ),
         _ValueRow(
           label: l10n.fatLabel,
-          value: '${breakdown.fatsGoalGrams.toInt()} g',
+          value: '${breakdown.fatsGoalGrams.round()} g',
           emphasized: true,
         ),
         _ValueRow(
           label: l10n.proteinLabel,
-          value: '${breakdown.proteinsGoalGrams.toInt()} g',
+          value: '${breakdown.proteinsGoalGrams.round()} g',
           emphasized: true,
         ),
       ],
@@ -486,8 +486,8 @@ class _MacroCard extends StatelessWidget {
   ) {
     final pct = (fraction * 100).round();
     final density = kcalPerGram.toStringAsFixed(0);
-    // Grams truncate (not round) to match the dashboard's macro tiles.
-    return '$goalKcal × $pct % ÷ $density = ${grams.toInt()} g';
+    // Grams round, like the dashboard's macro tiles.
+    return '$goalKcal × $pct % ÷ $density = ${grams.round()} g';
   }
 }
 
@@ -582,7 +582,7 @@ class _FormulaText extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final text = rawText ??
-        '$formula\n= ${resultKcal!.toInt()} ${S.of(context).kcalLabel}';
+        '$formula\n= ${resultKcal!.round()} ${S.of(context).kcalLabel}';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(Dimens.spacing8),

@@ -15,7 +15,8 @@ import 'package:provider/provider.dart';
 
 import '../../../../fixture/user_entity_fixtures.dart';
 
-class _FakeBreakdownUsecase extends Fake implements GetKcalGoalBreakdownUsecase {
+class _FakeBreakdownUsecase extends Fake
+    implements GetKcalGoalBreakdownUsecase {
   final KcalGoalBreakdownEntity breakdown;
 
   _FakeBreakdownUsecase(this.breakdown);
@@ -45,10 +46,12 @@ void main() {
     // The gauge navigates to KcalGoalInfoScreen, which pulls its usecase
     // from the locator when none is injected.
     locator.registerSingleton<GetKcalGoalBreakdownUsecase>(
-      _FakeBreakdownUsecase(KcalGoalBreakdownEntity.compute(
-        user: UserEntityFixtures.youngSedentaryMaleWantingToMaintainWeight,
-        totalKcalActivities: 0,
-      )),
+      _FakeBreakdownUsecase(
+        KcalGoalBreakdownEntity.compute(
+          user: UserEntityFixtures.youngSedentaryMaleWantingToMaintainWeight,
+          totalKcalActivities: 0,
+        ),
+      ),
     );
   });
 
@@ -113,7 +116,8 @@ void main() {
       expect(
         node.getSemanticsData().hasAction(SemanticsAction.tap),
         isTrue,
-        reason: 'excludeSemantics drops the GestureDetector\'s tap action, '
+        reason:
+            'excludeSemantics drops the GestureDetector\'s tap action, '
             'so the Semantics node must register its own onTap',
       );
 
@@ -127,4 +131,57 @@ void main() {
       semanticsHandle.dispose();
     },
   );
+
+  testWidgets(
+    'a fraction of a kcal over reads the same as the two numbers beside it',
+    (tester) async {
+      // 2650.9 goal, 2651.4 logged: the screen shows 2651 of 2651, so it must say
+      // nothing is left, not "0 kcal too much" (it was cut off, not rounded).
+      await tester.pumpWidget(
+        _wrap(
+          const DashboardWidget(
+            totalKcalSupplied: 2651.4,
+            totalKcalBurned: 0,
+            totalKcalDaily: 2650.9,
+            totalKcalLeft: 2650.9 - 2651.4,
+            totalCarbsIntake: 453.4,
+            totalFatsIntake: 54.6,
+            totalProteinsIntake: 111.2,
+            totalCarbsGoal: 430,
+            totalFatsGoal: 53,
+            totalProteinsGoal: 112,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('2651'), findsWidgets); // logged, whole number
+      expect(find.textContaining('too much'), findsNothing);
+      expect(find.text('kcal left'), findsOneWidget);
+      expect(find.text('455/430 g'), findsNothing);
+      expect(find.text('453/430 g'), findsOneWidget);
+      expect(find.text('55/53 g'), findsOneWidget); // 54.6 rounds up, not down
+    },
+  );
+
+  testWidgets('one whole kcal over still says so', (tester) async {
+    await tester.pumpWidget(
+      _wrap(
+        const DashboardWidget(
+          totalKcalSupplied: 2651,
+          totalKcalBurned: 0,
+          totalKcalDaily: 2650,
+          totalKcalLeft: -1,
+          totalCarbsIntake: 0,
+          totalFatsIntake: 0,
+          totalProteinsIntake: 0,
+          totalCarbsGoal: 1,
+          totalFatsGoal: 1,
+          totalProteinsGoal: 1,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('kcal too much'), findsOneWidget);
+    expect(find.text('1'), findsWidgets);
+  });
 }
