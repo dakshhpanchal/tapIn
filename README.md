@@ -2,9 +2,11 @@
   <img alt="tapIn" src="docs/media/banner.png" width="640" />
 </p>
 
+<h3 align="center">Eat. Train. Track.</h3>
+
 <p align="center">
-  <b>Track. Train. Private.</b><br />
-  Calories, macros and workouts in one Android app. No account, no ads, no subscription.
+  Calories, macros and workouts in one Android app.<br />
+  No account, no ads, no subscription. Everything stays on your phone.
 </p>
 
 <p align="center">
@@ -19,14 +21,20 @@
 
 <p align="center">
   <a href="#install">Install</a>
-  ·
+  &nbsp;·&nbsp;
+  <a href="#a-look-around">A look around</a>
+  &nbsp;·&nbsp;
   <a href="#features">Features</a>
-  ·
+  &nbsp;·&nbsp;
   <a href="#open-food-facts">Open Food Facts</a>
-  ·
+  &nbsp;·&nbsp;
   <a href="#build-from-source">Build</a>
-  ·
+  &nbsp;·&nbsp;
   <a href="CONTRIBUTING.md">Contributing</a>
+</p>
+
+<p align="center">
+  <img alt="Logging a workout: last time's weight is already filled in, each set is ticked off, and the finished workout ends in a summary" src="docs/media/hero.gif" width="640" />
 </p>
 
 tapIn logs what you eat against a calorie and macro target worked out from your body and goal, and runs your lifting plan from the same app. Both show up on the same Home screen, and everything stays on your phone, encrypted. It is for anyone who wants to see the whole picture, food and training, without handing it to a company.
@@ -39,36 +47,36 @@ Download the APK from the [latest release](https://github.com/dakshhpanchal/tapI
 
 It installs next to OpenNutriTracker under its own app id, `com.tapin.app`, and never touches that app's data. The release notes list the signing certificate's SHA-256 so you can check the file.
 
-## Screenshots
+## A look around
 
 <table align="center">
   <tr>
-    <td align="center" width="25%"><img alt="Home with the calorie ring, macros and today's workout" src="docs/media/home.png" /></td>
-    <td align="center" width="25%"><img alt="Diary calendar and the day's totals" src="docs/media/diary.png" /></td>
-    <td align="center" width="25%"><img alt="Gym tab with this week's volume and saved workouts" src="docs/media/gym.png" /></td>
-    <td align="center" width="25%"><img alt="Trends with streak, averages and calories against goal" src="docs/media/trends.png" /></td>
+    <td align="center" width="25%"><img alt="Home: the calorie ring, macros and today's workout" src="docs/media/shot_home.png" /></td>
+    <td align="center" width="25%"><img alt="Adding food from recent items, or searching, scanning and creating your own" src="docs/media/shot_add.png" /></td>
+    <td align="center" width="25%"><img alt="Gym tab with this week's sets per muscle and your workouts" src="docs/media/shot_gym.png" /></td>
+    <td align="center" width="25%"><img alt="Logging a workout with last time's weight and reps beside each set" src="docs/media/shot_log.png" /></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Home</b><br />the day at a glance</sub></td>
-    <td align="center"><sub><b>Diary</b><br />every day you logged</sub></td>
-    <td align="center"><sub><b>Gym</b><br />plans and weekly volume</sub></td>
-    <td align="center"><sub><b>Trends</b><br />averages, streaks, goal</sub></td>
+    <td align="center"><sub><b>Home</b><br />your day in one ring</sub></td>
+    <td align="center"><sub><b>Add food</b><br />search, scan or create</sub></td>
+    <td align="center"><sub><b>Gym</b><br />plans and weekly sets</sub></td>
+    <td align="center"><sub><b>Log</b><br />last time, right there</sub></td>
   </tr>
   <tr>
-    <td align="center"><img alt="A workout's contents before starting it" src="docs/media/workout.png" /></td>
-    <td align="center"><img alt="Logging sets with last time's weight and reps beside each one" src="docs/media/active.png" /></td>
-    <td align="center"><img alt="Bench press progress with estimated one-rep max and past sessions" src="docs/media/progress.png" /></td>
-    <td align="center"><img alt="Profile with BMI, goal, activity level and weekly rate" src="docs/media/you.png" /></td>
+    <td align="center"><img alt="Progress: workouts per week and each exercise's heaviest set from first workout to latest" src="docs/media/shot_progress.png" /></td>
+    <td align="center"><img alt="Trends: averages and calories against your goal, counting finished days only" src="docs/media/shot_trends.png" /></td>
+    <td align="center"><img alt="Home in dark mode" src="docs/media/shot_dark.png" /></td>
+    <td align="center"><img alt="Settings with separate switches for dark mode and Material You colours" src="docs/media/shot_settings.png" /></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Workout</b><br />what's in it</sub></td>
-    <td align="center"><sub><b>Logging</b><br />last time beside each set</sub></td>
-    <td align="center"><sub><b>Progress</b><br />estimated 1RM over time</sub></td>
-    <td align="center"><sub><b>You</b><br />goal and body metrics</sub></td>
+    <td align="center"><sub><b>Progress</b><br />what you actually lifted</sub></td>
+    <td align="center"><sub><b>Trends</b><br />finished days only</sub></td>
+    <td align="center"><sub><b>Dark</b><br />easy on the eyes</sub></td>
+    <td align="center"><sub><b>Yours</b><br />dark mode and colours</sub></td>
   </tr>
 </table>
 
-<sub>All screenshots use generated sample data, not a real person's log, in the colours of the app icon.</sub>
+<p align="center"><sub>Screens show generated sample data, not a real person's log.</sub></p>
 
 ## Why tapIn
 
@@ -90,7 +98,7 @@ It installs next to OpenNutriTracker under its own app id, `com.tapin.app`, and 
 | 🍽️ | **My foods** | Custom foods and recipes live together under one list. A recipe is a food made of ingredients, and a "New food" toggle covers both. |
 | 📓 | **Diary** | Breakfast, lunch, dinner and snacks on a calendar. Entries show the amount the way you logged it, such as "1.5 servings", not only grams. |
 | 🎯 | **Targets** | Type your calorie goal directly. Macros are three linked fields, in percent and grams, that rebalance together. |
-| 📈 | **Trends** | 7 day to all-time views with the average calories next to the chart, surplus or deficit against goal, macro averages, protein per kg, weight, streaks and best and worst days. |
+| 📈 | **Trends** | 7 day to all-time views with the average calories next to the chart, surplus or deficit against goal, macro averages, protein per kg, weight, streaks and best and worst days. Only finished days count, so today joins your averages tomorrow instead of dragging them down half-logged. |
 | 💧 | **Water and fasting** | Water tracking you can switch off in Settings, plus an optional fasting timer. |
 
 ### Gym
@@ -102,12 +110,12 @@ It installs next to OpenNutriTracker under its own app id, `com.tapin.app`, and 
 | 🛠️ | **Per-exercise details** | A machine setting, a note for next time, and an optional plate counter for barbell lifts. |
 | ↕️ | **Flexible sessions** | Skip an exercise or a single set, reorder exercises, and edit a workout after you logged it. |
 | 🧘 | **Rest days** | Log a rest day so a gap in the week is a choice you made, not a blank. Today's workout or rest day also shows on Home, above Breakfast. |
-| 📊 | **Progress** | Per-exercise progress charts, weekly sets per muscle group, and a muscle filter. |
+| 📊 | **Progress** | Workouts per week and your week streak, each exercise's heaviest set from your first workout to the latest (weight × reps, no estimates), and your newest records. |
 | 🔁 | **Import and export** | Your workouts, with settings, notes and plates, go in and out as JSON. |
 
 ### Everywhere
 
-- A black-and-coral Material 3 look, with Material You colors available on Android 12+.
+- A coral, lavender and indigo Material 3 look, taken from the app icon. **Dark mode** and **Material You colours** are two separate switches in Settings, so you can have either, both or neither.
 - Imports your data from OpenNutriTracker. See [Moving over from OpenNutriTracker](#moving-over-from-opennutritracker).
 - Add products to Open Food Facts and correct wrong ones. See [Open Food Facts](#open-food-facts).
 

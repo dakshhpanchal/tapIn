@@ -1,3 +1,6 @@
+import 'package:opennutritracker/core/domain/entity/profile_entity.dart';
+import 'package:opennutritracker/core/domain/usecase/get_profiles_usecase.dart';
+import 'package:opennutritracker/core/domain/usecase/update_profile_usecase.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:opennutritracker/core/l10n/app_locales.dart';
@@ -35,6 +38,21 @@ Future<void> main() async {
   await seedGymDemo();
 
   final configRepo = locator<ConfigRepository>();
+  // This build is for recording the app: no "sample data" banner, and the
+  // seeded profile goes by a plain first name.
+  await configRepo.setIsDemoData(false);
+  final active = locator<GetProfilesUsecase>().getActiveProfile();
+  if (active != null) {
+    await locator<UpdateProfileUsecase>().updateProfile(
+      ProfileEntity(
+        id: active.id,
+        name: 'Alex',
+        createdAt: active.createdAt,
+        boxSuffix: active.boxSuffix,
+        imagePath: active.imagePath,
+      ),
+    );
+  }
   final config = await configRepo.getConfig();
   // Mirrors the reconciliation in main.dart so a dev build behaves the same
   // way when the OS holds a per-app language.
