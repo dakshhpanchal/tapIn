@@ -48,6 +48,14 @@ class WorkoutDetailScreen extends StatelessWidget {
               Dimens.spacing24,
             ),
             children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: Dimens.spacing12),
+                child: Text(
+                  'Workouts start from the weights you used last time. Change '
+                  'a weight while you train and this plan follows.',
+                  style: text.bodySmall?.copyWith(color: mutedColor(context)),
+                ),
+              ),
               for (final e in routine.exercises)
                 Padding(
                   padding: const EdgeInsets.only(bottom: Dimens.spacing8),

@@ -12,15 +12,19 @@ class WorkoutSummaryScreen extends StatelessWidget {
 
   static String _recordText(Set<RecordKind> kinds) => [
     if (kinds.contains(RecordKind.weight)) 'Heaviest weight',
+    if (kinds.contains(RecordKind.reps)) 'More reps at your heaviest weight',
   ].join(' · ');
 
   @override
   Widget build(BuildContext context) {
     final session = finished.session;
-    // Only a heavier weight counts as a record; the estimates are not shown.
+    // A heavier weight, or more reps at the heaviest weight, is a record; the
+    // estimates are not shown.
     final weightRecords = {
       for (final r in finished.records.entries)
-        if (r.value.contains(RecordKind.weight)) r.key: r.value,
+        if (r.value.contains(RecordKind.weight) ||
+            r.value.contains(RecordKind.reps))
+          r.key: r.value,
     };
     final text = Theme.of(context).textTheme;
     final accent = Theme.of(context).colorScheme.primary;

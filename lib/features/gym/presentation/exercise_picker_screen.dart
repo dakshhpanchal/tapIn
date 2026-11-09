@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:opennutritracker/core/presentation/widgets/confirm_dialog.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:opennutritracker/core/styles/dimens.dart';
 import 'package:opennutritracker/features/gym/domain/gym_models.dart';
@@ -41,6 +42,29 @@ class _ExercisePickerScreenState extends State<ExercisePickerScreen> {
                   (q.isEmpty || e.name.toLowerCase().contains(q)))
                 e,
           ];
+          // Exercises you have done come first, the latest on top, then the
+          // rest A-Z.
+          final lastUsed = <String, DateTime>{};
+          for (final s in state.sessions) {
+            for (final x in s.exercises) {
+              final d = lastUsed[x.exerciseId];
+              if (d == null || s.startedAt.isAfter(d)) {
+                lastUsed[x.exerciseId] = s.startedAt;
+              }
+            }
+          }
+          items.sort((a, b) {
+            final da = lastUsed[a.id], db = lastUsed[b.id];
+            if (da != null && db != null) {
+              final c = db.compareTo(da);
+              if (c != 0) return c;
+            } else if (da != null) {
+              return -1;
+            } else if (db != null) {
+              return 1;
+            }
+            return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+          });
           if (state.exercises.isEmpty) {
             return Center(
               child: Padding(
@@ -104,7 +128,13 @@ class _ExercisePickerScreenState extends State<ExercisePickerScreen> {
                     ? Center(
                         child: TextButton.icon(
                           icon: const Icon(Icons.add_rounded),
-                          label: Text('Create "${_query.trim()}"'),
+                          // A muscle filter with nothing in it has no name to
+                          // offer yet.
+                          label: Text(
+                            _query.trim().isEmpty
+                                ? 'Create exercise'
+                                : 'Create "${_query.trim()}"',
+                          ),
                           onPressed: () =>
                               _create(context, cubit, initialName: _query),
                         ),
@@ -264,25 +294,14 @@ class _ExercisePickerScreenState extends State<ExercisePickerScreen> {
   }
 
   Future<void> _delete(BuildContext context, GymCubit cubit, Exercise e) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Delete "${e.name}"?'),
-        content: const Text(
+    final ok = await showConfirmDialog(
+      context,
+      title: 'Delete "${e.name}"?',
+      content:
           'It is removed from this list. Workouts you already logged keep it.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Delete',
+      destructive: true,
     );
-    if (ok == true) await cubit.deleteExercise(e.id);
+    if (ok) await cubit.deleteExercise(e.id);
   }
 }

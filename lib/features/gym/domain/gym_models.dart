@@ -168,6 +168,8 @@ class WorkoutExercise {
       );
 
   WorkoutExercise copyWith({
+    String? name,
+    MuscleGroup? muscle,
     List<SetEntry>? sets,
     String? note,
     String? setting,
@@ -176,8 +178,8 @@ class WorkoutExercise {
     bool? skipped,
   }) => WorkoutExercise(
     exerciseId: exerciseId,
-    name: name,
-    muscle: muscle,
+    name: name ?? this.name,
+    muscle: muscle ?? this.muscle,
     kind: kind,
     sets: sets ?? this.sets,
     note: note ?? this.note,
@@ -226,6 +228,11 @@ class WorkoutSession {
   final String notes;
   final List<WorkoutExercise> exercises;
 
+  /// The workout plan this one was started from, so weights and units changed
+  /// during the workout can be carried back into the plan. Null for an empty
+  /// workout and for everything saved before this existed.
+  final String? routineId;
+
   const WorkoutSession({
     required this.id,
     required this.name,
@@ -233,6 +240,7 @@ class WorkoutSession {
     this.endedAt,
     this.notes = '',
     this.exercises = const [],
+    this.routineId,
   });
 
   bool get isFinished => endedAt != null;
@@ -252,6 +260,7 @@ class WorkoutSession {
     endedAt: endedAt ?? this.endedAt,
     notes: notes ?? this.notes,
     exercises: exercises ?? this.exercises,
+    routineId: routineId,
   );
 
   Map<String, dynamic> toJson() => {
@@ -261,6 +270,7 @@ class WorkoutSession {
     'endedAt': endedAt?.toIso8601String(),
     'notes': notes,
     'exercises': [for (final e in exercises) e.toJson()],
+    if (routineId != null) 'routineId': routineId,
   };
 
   factory WorkoutSession.fromJson(Map<String, dynamic> json) => WorkoutSession(
@@ -275,6 +285,7 @@ class WorkoutSession {
       for (final e in (json['exercises'] as List? ?? const []))
         WorkoutExercise.fromJson(Map<String, dynamic>.from(e as Map)),
     ],
+    routineId: json['routineId'] as String?,
   );
 
   String encode() => jsonEncode(toJson());

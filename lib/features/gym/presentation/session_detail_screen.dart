@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:opennutritracker/core/presentation/widgets/confirm_dialog.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:opennutritracker/core/presentation/widgets/app_card.dart';
 import 'package:opennutritracker/core/styles/dimens.dart';
@@ -57,7 +58,7 @@ class _SessionDetail extends StatelessWidget {
               }
             },
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'routine', child: Text('Save as routine')),
+              PopupMenuItem(value: 'routine', child: Text('Add to My workouts')),
               PopupMenuItem(value: 'delete', child: Text('Delete workout')),
             ],
           ),
@@ -203,12 +204,12 @@ class _SessionDetail extends StatelessWidget {
     final name = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Save as routine'),
+        title: const Text('Add to My workouts'),
         content: TextField(
           controller: controller,
           autofocus: true,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(labelText: 'Routine name'),
+          decoration: const InputDecoration(labelText: 'Workout name'),
         ),
         actions: [
           TextButton(
@@ -228,7 +229,7 @@ class _SessionDetail extends StatelessWidget {
     if (context.mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Saved "$name".')));
+      ).showSnackBar(SnackBar(content: Text('Added "$name" to My workouts.')));
     }
   }
 
@@ -241,25 +242,28 @@ class _SessionDetail extends StatelessWidget {
   }
 
   Future<void> _delete(BuildContext context, GymCubit cubit) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete workout?'),
-        content: const Text('This removes it from your history and records.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
+    final ok = await showConfirmDialog(
+      context,
+      title: 'Delete workout?',
+      content: 'This removes it from your history and records.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    );
+    if (!ok || !context.mounted) return;
+    // The message outlives this screen, so Undo is still there after it closes.
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    await cubit.deleteSession(session.id);
+    navigator.pop();
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text('Workout deleted.'),
+        duration: const Duration(seconds: 8),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () => cubit.restoreSession(session),
+        ),
       ),
     );
-    if (ok != true) return;
-    await cubit.deleteSession(session.id);
-    if (context.mounted) Navigator.of(context).pop();
   }
 }

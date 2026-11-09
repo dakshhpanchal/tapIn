@@ -634,4 +634,178 @@ void main() {
     expect(bad.warnings, hasLength(1));
     expect(other.state.restDays, contains('2026-10-30'));
   });
+
+  group('changes made during a workout reach the plan', () {
+    Future<(GymCubit, Routine)> planWithBench() async {
+      final cubit = await loaded();
+      final bench = cubit.state.exercises.first;
+      await cubit.saveRoutine(
+        name: 'Push',
+        exercises: [
+          WorkoutExercise.of(
+            bench,
+            sets: const [
+              SetEntry(weightKg: 40, reps: 8),
+              SetEntry(weightKg: 40, reps: 8),
+            ],
+          ),
+        ],
+      );
+      final plan = cubit.state.routines.single;
+      await cubit.startFromRoutine(plan);
+      return (cubit, plan);
+    }
+
+    test('a new weight on a working set is written into the plan', () async {
+      final (cubit, plan) = await planWithBench();
+      expect(cubit.state.active!.routineId, plan.id);
+
+      await cubit.updateSet(0, 1, (s) => s.copyWith(weightKg: 52.5));
+
+      final planned = cubit.state.routines.single.exercises.single.sets;
+      expect(planned.map((s) => s.weightKg), [40, 52.5]);
+      // Persisted, not only in memory.
+      expect(
+        (await loaded())
+            .state
+            .routines
+            .single
+            .exercises
+            .single
+            .sets[1]
+            .weightKg,
+        52.5,
+      );
+    });
+
+    test(
+      'reps, ticking a set and clearing the weight leave the plan',
+      () async {
+        final (cubit, _) = await planWithBench();
+        await cubit.updateSet(0, 0, (s) => s.copyWith(reps: 12, done: true));
+        await cubit.updateSet(0, 0, (s) => s.copyWith(weightKg: 0));
+        expect(
+          cubit.state.routines.single.exercises.single.sets.map(
+            (s) => s.weightKg,
+          ),
+          [40, 40],
+        );
+      },
+    );
+
+    test('a workout with no plan changes no plan', () async {
+      final cubit = await loaded();
+      await cubit.saveRoutine(
+        name: 'Push',
+        exercises: [
+          WorkoutExercise.of(
+            cubit.state.exercises.first,
+            sets: const [SetEntry(weightKg: 40, reps: 8)],
+          ),
+        ],
+      );
+      await cubit.startEmptyWorkout();
+      await cubit.addExercise(cubit.state.exercises.first);
+      await cubit.updateSet(0, 0, (s) => s.copyWith(weightKg: 99));
+      expect(
+        cubit.state.routines.single.exercises.single.sets.single.weightKg,
+        40,
+      );
+    });
+
+    test(
+      'switching to plates updates the workout, plan and exercise',
+      () async {
+        final (cubit, _) = await planWithBench();
+        await cubit.setExercisePlates(0, true);
+
+        expect(cubit.state.active!.exercises[0].plates, isTrue);
+        expect(cubit.state.routines.single.exercises.single.plates, isTrue);
+        expect(cubit.state.exercises.single.plates, isTrue);
+        // The numbers stay as they were.
+        expect(
+          cubit.state.routines.single.exercises.single.sets.map(
+            (s) => s.weightKg,
+          ),
+          [40, 40],
+        );
+
+        final reloaded = await loaded();
+        expect(reloaded.state.routines.single.exercises.single.plates, isTrue);
+
+        await cubit.setExercisePlates(0, false);
+        expect(cubit.state.routines.single.exercises.single.plates, isFalse);
+        expect(cubit.state.exercises.single.plates, isFalse);
+      },
+    );
+
+    test('a workout saved before plans were linked still loads', () {
+      final old = WorkoutSession.decode(
+        '{"id":"a","name":"Old","startedAt":"2026-10-01T10:00:00.000","endedAt":null,"notes":"","exercises":[]}',
+      );
+      expect(old.routineId, isNull);
+      expect(old.toJson().containsKey('routineId'), isFalse);
+    });
+  });
+
+  group('renaming an exercise', () {
+    test(
+      'reaches plans and the workout in progress, not finished history',
+      () async {
+        final cubit = await loaded();
+        final bench = cubit.state.exercises.first;
+        await cubit.saveRoutine(
+          name: 'Push',
+          exercises: [
+            WorkoutExercise.of(bench, sets: const [SetEntry(weightKg: 40)]),
+          ],
+        );
+        await cubit.startFromRoutine(cubit.state.routines.single);
+        await logSet(cubit, 40, 8);
+        await cubit.finishWorkout();
+        await cubit.startFromRoutine(cubit.state.routines.single);
+
+        await cubit.updateExercise(
+          bench,
+          name: '  Flat bench ',
+          muscle: MuscleGroup.shoulders,
+          plates: true,
+        );
+
+        expect(cubit.state.exercises.single.name, 'Flat bench');
+        final planned = cubit.state.routines.single.exercises.single;
+        expect(planned.name, 'Flat bench');
+        expect(planned.muscle, MuscleGroup.shoulders);
+        expect(planned.plates, isTrue);
+        expect(cubit.state.active!.exercises.single.name, 'Flat bench');
+        // What was logged stays as it was.
+        expect(
+          cubit.state.sessions.single.exercises.single.name,
+          'Bench Press',
+        );
+
+        final reloaded = await loaded();
+        expect(
+          reloaded.state.routines.single.exercises.single.name,
+          'Flat bench',
+        );
+      },
+    );
+  });
+
+  test('a deleted workout can be restored', () async {
+    final cubit = await loaded();
+    await cubit.startEmptyWorkout();
+    await cubit.addExercise(cubit.state.exercises.first);
+    await logSet(cubit, 50, 5);
+    await cubit.finishWorkout();
+    final session = cubit.state.sessions.single;
+
+    await cubit.deleteSession(session.id);
+    expect(cubit.state.sessions, isEmpty);
+
+    await cubit.restoreSession(session);
+    expect(cubit.state.sessions.single.id, session.id);
+    expect((await loaded()).state.sessions.single.id, session.id);
+  });
 }

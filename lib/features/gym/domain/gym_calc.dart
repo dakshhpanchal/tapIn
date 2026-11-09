@@ -59,11 +59,15 @@ double bestOneRepMax(WorkoutExercise e) => workingSets(e).fold(
 /// One point on an exercise's progress chart: how that exercise went in one
 /// finished session.
 typedef ExercisePoint = ({
+  String sessionId,
   DateTime date,
   double bestWeightKg,
   double oneRepMaxKg,
   double volumeKg,
   int topReps,
+
+  /// The weight was logged in machine plates, not kg or lb.
+  bool plates,
 });
 
 /// [exerciseId]'s history across finished [sessions], oldest first. Sessions
@@ -78,11 +82,13 @@ List<ExercisePoint> exerciseHistory(
     for (final e in s.exercises.where((e) => e.exerciseId == exerciseId)) {
       if (workingSets(e).isEmpty) continue;
       points.add((
+        sessionId: s.id,
         date: s.startedAt,
         bestWeightKg: bestWeight(e),
         oneRepMaxKg: bestOneRepMax(e),
         volumeKg: exerciseVolume(e),
         topReps: topSet(e).reps,
+        plates: e.plates,
       ));
     }
   }
@@ -113,11 +119,12 @@ WorkoutExercise? lastPerformance(
   return found;
 }
 
-enum RecordKind { weight, oneRepMax, volume }
+enum RecordKind { weight, reps, oneRepMax, volume }
 
 /// Records [session] set against everything in [before] (the finished
-/// sessions that existed first): per exercise, which of heaviest weight,
-/// estimated 1RM and session volume are new bests. A first-ever performance
+/// sessions that existed first): per exercise, which of heaviest weight, more
+/// reps at the heaviest weight, estimated 1RM and session volume are new
+/// bests. A first-ever performance
 /// is not a record, since there is nothing to beat.
 Map<String, Set<RecordKind>> detectRecords(
   WorkoutSession session,
@@ -129,8 +136,17 @@ Map<String, Set<RecordKind>> detectRecords(
     if (history.isEmpty || workingSets(e).isEmpty) continue;
     double maxOf(double Function(ExercisePoint) f) =>
         history.map(f).reduce((a, b) => a > b ? a : b);
+    // More reps only counts at the heaviest weight so far; a lighter set with
+    // more reps is a different exercise day, not progress.
+    final heaviest = maxOf((p) => p.bestWeightKg);
+    final topNow = topSet(e);
+    final repsBefore = history
+        .where((p) => p.bestWeightKg == heaviest)
+        .fold(0, (m, p) => p.topReps > m ? p.topReps : m);
     final found = <RecordKind>{
-      if (bestWeight(e) > maxOf((p) => p.bestWeightKg)) RecordKind.weight,
+      if (bestWeight(e) > heaviest) RecordKind.weight,
+      if (topNow.weightKg == heaviest && topNow.reps > repsBefore)
+        RecordKind.reps,
       if (bestOneRepMax(e) > maxOf((p) => p.oneRepMaxKg)) RecordKind.oneRepMax,
       if (exerciseVolume(e) > maxOf((p) => p.volumeKg)) RecordKind.volume,
     };
@@ -222,37 +238,78 @@ typedef TopSet = ({double weightKg, int reps});
 typedef ExerciseGain = ({
   String id,
   String name,
+  MuscleGroup muscle,
   bool plates,
   int sessions,
+  DateTime lastDate,
   TopSet first,
   TopSet latest,
 });
 
-/// Exercises done in at least two finished sessions, biggest gain first.
-List<ExerciseGain> exerciseGains(Iterable<WorkoutSession> sessions) {
+/// How an exercise is going, for grouping: better, the same, worse, or not
+/// done often enough to tell.
+enum GainStatus { improved, same, less, tooEarly }
+
+GainStatus gainStatus(ExerciseGain g) {
+  if (g.sessions < 2) return GainStatus.tooEarly;
+  final weight = g.latest.weightKg - g.first.weightKg;
+  if (weight > 0) return GainStatus.improved;
+  if (weight < 0) return GainStatus.less;
+  final reps = g.latest.reps - g.first.reps;
+  return reps > 0
+      ? GainStatus.improved
+      : reps < 0
+      ? GainStatus.less
+      : GainStatus.same;
+}
+
+/// Exercises done in at least two finished sessions, biggest gain first. With
+/// [includeSingle], exercises done once follow, most recent first, so a search
+/// can find everything that has been logged.
+List<ExerciseGain> exerciseGains(
+  Iterable<WorkoutSession> sessions, {
+  bool includeSingle = false,
+}) {
   final ordered = sessions.where((s) => s.isFinished).toList()
     ..sort((a, b) => a.startedAt.compareTo(b.startedAt));
   final sets = <String, List<TopSet>>{};
   final names = <String, String>{};
+  final muscles = <String, MuscleGroup>{};
+  final lastDates = <String, DateTime>{};
   final plateFlags = <String, bool>{};
+  final plateHistory = <String, List<bool>>{};
   for (final s in ordered) {
     for (final e in s.exercises) {
       if (workingSets(e).isEmpty) continue;
       final top = topSet(e);
       if (top.weightKg <= 0 && top.reps <= 0) continue;
       sets.putIfAbsent(e.exerciseId, () => []).add(top);
+      plateHistory.putIfAbsent(e.exerciseId, () => []).add(e.plates);
       names[e.exerciseId] = e.name;
+      muscles[e.exerciseId] = e.muscle;
+      lastDates[e.exerciseId] = s.startedAt;
       plateFlags[e.exerciseId] = e.plates;
     }
   }
+  // An exercise switched between plates and kg is compared only in the unit
+  // it was last logged in; a plate count and a weight are not comparable.
+  final inLatestUnit = <String, List<TopSet>>{
+    for (final id in sets.keys)
+      id: [
+        for (var i = 0; i < sets[id]!.length; i++)
+          if (plateHistory[id]![i] == plateHistory[id]!.last) sets[id]![i],
+      ],
+  };
   final gains = <ExerciseGain>[
-    for (final entry in sets.entries)
+    for (final entry in inLatestUnit.entries)
       if (entry.value.length >= 2)
         (
           id: entry.key,
           name: names[entry.key]!,
+          muscle: muscles[entry.key]!,
           plates: plateFlags[entry.key]!,
           sessions: entry.value.length,
+          lastDate: lastDates[entry.key]!,
           first: entry.value.first,
           latest: entry.value.last,
         ),
@@ -267,7 +324,22 @@ List<ExerciseGain> exerciseGains(Iterable<WorkoutSession> sessions) {
         ? c
         : (b.latest.reps - b.first.reps).compareTo(a.latest.reps - a.first.reps);
   });
-  return gains;
+  if (!includeSingle) return gains;
+  final single = <ExerciseGain>[
+    for (final entry in inLatestUnit.entries)
+      if (entry.value.length == 1)
+        (
+          id: entry.key,
+          name: names[entry.key]!,
+          muscle: muscles[entry.key]!,
+          plates: plateFlags[entry.key]!,
+          sessions: 1,
+          lastDate: lastDates[entry.key]!,
+          first: entry.value.first,
+          latest: entry.value.first,
+        ),
+  ]..sort((a, b) => b.lastDate.compareTo(a.lastDate));
+  return [...gains, ...single];
 }
 
 typedef RecordEntry = ({
@@ -276,7 +348,7 @@ typedef RecordEntry = ({
   Set<RecordKind> kinds,
 });
 
-/// The most recent new heaviest weights, newest first. A first-ever
+/// The most recent new heaviest weights or rep records, newest first. A first-ever
 /// performance is not a record.
 List<RecordEntry> recentRecords(
   Iterable<WorkoutSession> sessions, {
@@ -289,7 +361,7 @@ List<RecordEntry> recentRecords(
     final records = detectRecords(ordered[i], ordered.take(i));
     for (final e in ordered[i].exercises) {
       final kinds = {...?records[e.exerciseId]}
-        ..retainAll({RecordKind.weight});
+        ..retainAll({RecordKind.weight, RecordKind.reps});
       if (kinds.isNotEmpty) {
         found.add((
           date: ordered[i].startedAt,

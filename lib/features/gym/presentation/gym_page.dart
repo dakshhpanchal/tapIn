@@ -11,8 +11,9 @@ import 'package:opennutritracker/features/gym/presentation/active_workout_screen
 import 'package:opennutritracker/features/gym/presentation/gym_cubit.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_format.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_transfer_ui.dart';
+import 'package:opennutritracker/features/gym/presentation/history_screen.dart';
+import 'package:opennutritracker/features/gym/presentation/history_tiles.dart';
 import 'package:opennutritracker/features/gym/presentation/reorder_sheet.dart';
-import 'package:opennutritracker/features/gym/presentation/session_detail_screen.dart';
 import 'package:opennutritracker/features/gym/presentation/workout_detail_screen.dart';
 import 'package:opennutritracker/features/gym/presentation/workout_editor_screen.dart';
 
@@ -41,6 +42,12 @@ class _GymPageState extends State<GymPage> {
         }
         final cubit = context.read<GymCubit>();
         final text = Theme.of(context).textTheme;
+        // Nothing logged or planned yet: show how it works, and keep the week
+        // summary and progress link until they have something to show.
+        final isNewUser =
+            state.routines.isEmpty &&
+            state.sessions.isEmpty &&
+            state.active == null;
         return ListView(
           padding: const EdgeInsets.fromLTRB(
             Dimens.spacing16,
@@ -53,25 +60,32 @@ class _GymPageState extends State<GymPage> {
               _ActiveCard(session: state.active!),
               const SizedBox(height: Dimens.spacing16),
             ],
+            if (isNewUser) ...[
+              const _GettingStartedCard(),
+              const SizedBox(height: Dimens.spacing16),
+            ],
+            // Daily and cheap, so it is there from the first visit.
             _RestDayCard(restDays: state.restDays),
             const SizedBox(height: Dimens.spacing16),
-            _WeekCard(sessions: state.sessions),
-            const SizedBox(height: Dimens.spacing8),
-            AppCard(
-              padding: EdgeInsets.zero,
-              child: ListTile(
-                leading: const Icon(Icons.show_chart_rounded),
-                title: const Text('Progress'),
-                subtitle: const Text('Consistency, strength and records'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const GymProgressScreen(),
+            if (!isNewUser) ...[
+              _WeekCard(sessions: state.sessions),
+              const SizedBox(height: Dimens.spacing8),
+              AppCard(
+                padding: EdgeInsets.zero,
+                child: ListTile(
+                  leading: const Icon(Icons.show_chart_rounded),
+                  title: const Text('Progress'),
+                  subtitle: const Text('Consistency, strength and records'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const GymProgressScreen(),
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: Dimens.spacing16),
+              const SizedBox(height: Dimens.spacing16),
+            ],
             Row(
               children: [
                 Expanded(child: Text('My workouts', style: text.titleMedium)),
@@ -96,37 +110,51 @@ class _GymPageState extends State<GymPage> {
                 ),
               ],
             ),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('New workout'),
-              onPressed: () => _openEditor(context),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('New workout'),
+                    onPressed: () => _openEditor(context),
+                  ),
+                ),
+                const SizedBox(width: Dimens.spacing12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.flash_on_rounded),
+                    label: const Text('Quick workout'),
+                    // One workout at a time: resume the running one instead.
+                    onPressed: state.active != null
+                        ? null
+                        : () async {
+                            await cubit.startEmptyWorkout();
+                            if (context.mounted) _openActive(context);
+                          },
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: Dimens.spacing8),
-            if (state.routines.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: Dimens.spacing16),
-                child: Text(
-                  'Create a workout with its exercises and sets. When you do '
-                  'it, you log the reps for each set.',
-                  textAlign: TextAlign.center,
-                  style: text.bodyMedium?.copyWith(color: mutedColor(context)),
+            if (state.routines.isEmpty) ...[
+              // The first-visit card already explains this.
+              if (!isNewUser)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: Dimens.spacing16,
+                  ),
+                  child: Text(
+                    'Create a workout with its exercises and sets. When you do '
+                    'it, you log the reps for each set.',
+                    textAlign: TextAlign.center,
+                    style: text.bodyMedium?.copyWith(
+                      color: mutedColor(context),
+                    ),
+                  ),
                 ),
-              )
-            else
+            ] else
               for (final r in state.routines)
                 _WorkoutTile(routine: r, canStart: state.active == null),
-            if (state.active == null)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  icon: const Icon(Icons.flash_on_rounded, size: 18),
-                  label: const Text('Quick workout'),
-                  onPressed: () async {
-                    await cubit.startEmptyWorkout();
-                    if (context.mounted) _openActive(context);
-                  },
-                ),
-              ),
             const SizedBox(height: Dimens.spacing16),
             Text('History', style: text.titleMedium),
             const SizedBox(height: Dimens.spacing8),
@@ -140,33 +168,12 @@ class _GymPageState extends State<GymPage> {
                 ),
               )
             else
-              // Workouts and rest days together, newest first.
-              for (final (session, restDay) in _historyEntries(state))
-                if (session != null)
-                  _SessionTile(session: session, useLb: state.useLb)
-                else
-                  _RestDayTile(dayKey: restDay!),
+              ..._recentHistory(context, state),
           ],
         );
       },
     );
   }
-}
-
-/// Workouts and rest days as one list, newest first: `(session, null)` or
-/// `(null, dayKey)`. A rest day on a day you also trained is left out, since
-/// the workout says more.
-List<(WorkoutSession?, String?)> _historyEntries(GymState state) {
-  final trained = {
-    for (final s in state.sessions) GymCubit.dayKey(s.startedAt),
-  };
-  final entries = <(DateTime, (WorkoutSession?, String?))>[
-    for (final s in state.sessions) (s.startedAt, (s, null)),
-    for (final day in state.restDays)
-      if (!trained.contains(day))
-        (DateTime.parse(day).add(const Duration(hours: 12)), (null, day)),
-  ]..sort((a, b) => b.$1.compareTo(a.$1));
-  return [for (final e in entries) e.$2];
 }
 
 Future<void> _reorderWorkouts(
@@ -333,53 +340,6 @@ class _WorkoutTile extends StatelessWidget {
   }
 }
 
-class _SessionTile extends StatelessWidget {
-  final WorkoutSession session;
-  final bool useLb;
-  const _SessionTile({required this.session, required this.useLb});
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Dimens.spacing8),
-      child: AppCard(
-        padding: const EdgeInsets.all(Dimens.spacing16),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => SessionDetailScreen(session: session),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(child: Text(session.name, style: text.titleSmall)),
-                Text(
-                  dateText(session.startedAt),
-                  style: text.bodySmall?.copyWith(color: mutedColor(context)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              '${sessionSetCount(session)} sets',
-              style: text.bodySmall?.copyWith(color: mutedColor(context)),
-            ),
-            Text(
-              session.exercises.map((e) => e.name).join(', '),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: text.bodySmall?.copyWith(color: mutedColor(context)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// This week's totals and how the sets were spread over muscle groups.
 class _WeekCard extends StatelessWidget {
   final List<WorkoutSession> sessions;
@@ -500,17 +460,13 @@ class _RestDayCard extends StatelessWidget {
                   'Rest day today',
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
-                GestureDetector(
-                  onTap: () => _pickOtherDay(context, cubit),
-                  child: Text(
-                    'Log a different day',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ),
               ],
             ),
+          ),
+          TextButton.icon(
+            icon: const Icon(Icons.edit_calendar_rounded, size: 18),
+            label: const Text('Past day'),
+            onPressed: () => _pickOtherDay(context, cubit),
           ),
           Switch(
             value: isRest,
@@ -527,51 +483,104 @@ class _RestDayCard extends StatelessWidget {
       initialDate: DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
-      helpText: 'Rest day',
+      helpText: 'Log a rest day',
     );
     if (day != null) await cubit.setRestDay(day, true);
   }
 }
 
-class _RestDayTile extends StatelessWidget {
-  final String dayKey;
-  const _RestDayTile({required this.dayKey});
+/// Shown on a first visit, before anything is planned or logged.
+class _GettingStartedCard extends StatelessWidget {
+  const _GettingStartedCard();
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Dimens.spacing8),
-      child: AppCard(
-        padding: const EdgeInsets.symmetric(
-          horizontal: Dimens.spacing16,
-          vertical: Dimens.spacing4,
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.self_improvement_rounded,
-              size: 20,
-              color: mutedColor(context),
-            ),
-            const SizedBox(width: Dimens.spacing12),
-            Expanded(child: Text('Rest day', style: text.titleSmall)),
-            Text(
-              dateText(DateTime.parse(dayKey)),
-              style: text.bodySmall?.copyWith(color: mutedColor(context)),
-            ),
-            IconButton(
-              tooltip: 'Remove rest day',
-              visualDensity: VisualDensity.compact,
-              icon: const Icon(Icons.close_rounded, size: 18),
-              onPressed: () => context.read<GymCubit>().setRestDay(
-                DateTime.parse(dayKey),
-                false,
+    final accent = Theme.of(context).colorScheme.primary;
+    Widget step(int n, String title, String body) => Padding(
+      padding: const EdgeInsets.only(top: Dimens.spacing12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 12,
+            backgroundColor: accent.withValues(alpha: 0.16),
+            child: Text(
+              '$n',
+              style: text.labelMedium?.copyWith(
+                color: accent,
+                fontWeight: FontWeight.w800,
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: Dimens.spacing12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: text.titleSmall),
+                Text(
+                  body,
+                  style: text.bodySmall?.copyWith(color: mutedColor(context)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    return AppCard(
+      padding: const EdgeInsets.all(Dimens.spacing20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Track your training', style: text.titleMedium),
+          step(
+            1,
+            'Create a workout',
+            'Add the exercises you do and how many sets of each.',
+          ),
+          step(
+            2,
+            'Start it',
+            'Enter the weight and reps, and tick each set when it is done.',
+          ),
+          step(
+            3,
+            'Watch it build up',
+            'Your history, progress and records appear here as you go. '
+                'For a one-off session, use Quick workout.',
+          ),
+        ],
       ),
     );
   }
+}
+
+/// The latest [_recentCount] workouts and rest days, newest first, with a way
+/// to open all of them.
+const _recentCount = 10;
+
+List<Widget> _recentHistory(BuildContext context, GymState state) {
+  final all = historyEntries(state);
+  return [
+    for (final (session, restDay) in all.take(_recentCount))
+      if (session != null)
+        SessionTile(session: session, useLb: state.useLb)
+      else
+        RestDayTile(dayKey: restDay!),
+    if (all.length > _recentCount)
+      AppCard(
+        padding: EdgeInsets.zero,
+        child: ListTile(
+          leading: const Icon(Icons.history_rounded),
+          title: Text('See all (${all.length})'),
+          subtitle: const Text('Search, sort and group your history'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const HistoryScreen()),
+          ),
+        ),
+      ),
+  ];
 }

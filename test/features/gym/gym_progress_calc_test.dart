@@ -23,20 +23,28 @@ void main() {
   final now = DateTime(2026, 10, 14, 12);
 
   test('workouts are counted per week, oldest first, ending this week', () {
-    final weeks = workoutsPerWeek([
-      _session('a', DateTime(2026, 10, 13), 60), // this week
-      _session('b', DateTime(2026, 10, 14), 60), // this week
-      _session('c', DateTime(2026, 10, 6), 60), // last week
-    ], now, weeks: 4);
+    final weeks = workoutsPerWeek(
+      [
+        _session('a', DateTime(2026, 10, 13), 60), // this week
+        _session('b', DateTime(2026, 10, 14), 60), // this week
+        _session('c', DateTime(2026, 10, 6), 60), // last week
+      ],
+      now,
+      weeks: 4,
+    );
     expect(weeks.map((w) => w.count), [0, 0, 1, 2]);
     expect(weeks.last.weekStart, DateTime(2026, 10, 12));
   });
 
   test('the streak is not broken by a week that has just begun', () {
-    final weeks = workoutsPerWeek([
-      _session('a', DateTime(2026, 10, 6), 60),
-      _session('b', DateTime(2026, 9, 29), 60),
-    ], now, weeks: 4);
+    final weeks = workoutsPerWeek(
+      [
+        _session('a', DateTime(2026, 10, 6), 60),
+        _session('b', DateTime(2026, 9, 29), 60),
+      ],
+      now,
+      weeks: 4,
+    );
     expect(weeks.last.count, 0);
     expect(workoutWeekStreak(weeks), 2);
   });
@@ -90,5 +98,96 @@ void main() {
     expect(records.single.date, DateTime(2026, 10, 1));
     expect(records.single.kinds, contains(RecordKind.weight));
     expect(records.single.kinds, isNot(contains(RecordKind.volume)));
+  });
+
+  test('more reps at the heaviest weight is a record too', () {
+    final records = recentRecords([
+      _session('a', DateTime(2026, 9, 1), 60, reps: 5),
+      _session('b', DateTime(2026, 10, 1), 60, reps: 8),
+    ]);
+    expect(records, hasLength(1));
+    expect(records.single.kinds, {RecordKind.reps});
+  });
+
+  test('more reps at a lighter weight than before is not a record', () {
+    final records =
+        detectRecords(_session('c', DateTime(2026, 11, 1), 60, reps: 12), [
+          _session('a', DateTime(2026, 9, 1), 60, reps: 5),
+          _session('b', DateTime(2026, 10, 1), 70, reps: 5),
+        ]);
+    // The estimates may still be new bests, but neither shown record is.
+    final kinds = records['bench'] ?? <RecordKind>{};
+    expect(kinds, isNot(contains(RecordKind.weight)));
+    expect(kinds, isNot(contains(RecordKind.reps)));
+  });
+
+  test(
+    'a heavier weight with fewer reps is a weight record, not a reps one',
+    () {
+      final records = detectRecords(
+        _session('b', DateTime(2026, 10, 1), 70, reps: 3),
+        [_session('a', DateTime(2026, 9, 1), 60, reps: 10)],
+      )['bench']!;
+      expect(records, contains(RecordKind.weight));
+      expect(records, isNot(contains(RecordKind.reps)));
+    },
+  );
+
+  group('an exercise switched between kg and plates', () {
+    WorkoutSession mixed(
+      String id,
+      DateTime day,
+      double w,
+      int reps, {
+      required bool plates,
+    }) => WorkoutSession(
+      id: id,
+      name: 'Push',
+      startedAt: day,
+      endedAt: day.add(const Duration(hours: 1)),
+      exercises: [
+        WorkoutExercise(
+          exerciseId: 'press',
+          name: 'Press',
+          muscle: MuscleGroup.chest,
+          plates: plates,
+          sets: [SetEntry(weightKg: w, reps: reps, done: true)],
+        ),
+      ],
+    );
+
+    test('is compared only in the unit it was last logged in', () {
+      final gains = exerciseGains([
+        mixed('a', DateTime(2026, 9, 1), 60, 8, plates: false),
+        mixed('b', DateTime(2026, 9, 8), 70, 8, plates: false),
+        mixed('c', DateTime(2026, 9, 15), 5, 10, plates: true),
+        mixed('d', DateTime(2026, 9, 22), 6, 10, plates: true),
+      ]);
+      expect(gains.single.plates, isTrue);
+      expect(gains.single.first.weightKg, 5);
+      expect(gains.single.latest.weightKg, 6);
+      expect(gains.single.sessions, 2);
+    });
+
+    test('with one workout in the new unit there is nothing to compare', () {
+      final sessions = [
+        mixed('a', DateTime(2026, 9, 1), 60, 8, plates: false),
+        mixed('b', DateTime(2026, 9, 8), 70, 8, plates: false),
+        mixed('c', DateTime(2026, 9, 15), 5, 10, plates: true),
+      ];
+      expect(exerciseGains(sessions), isEmpty);
+      final all = exerciseGains(sessions, includeSingle: true);
+      expect(all.single.sessions, 1);
+      expect(gainStatus(all.single), GainStatus.tooEarly);
+    });
+
+    test('each history point remembers its unit and workout', () {
+      final history = exerciseHistory([
+        mixed('a', DateTime(2026, 9, 1), 60, 8, plates: false),
+        mixed('c', DateTime(2026, 9, 15), 5, 10, plates: true),
+      ], 'press');
+      expect(history.map((p) => p.plates), [false, true]);
+      expect(history.map((p) => p.sessionId), ['a', 'c']);
+    });
   });
 }

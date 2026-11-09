@@ -381,21 +381,38 @@ class _ExerciseCard extends StatelessWidget {
                       cubit.setExerciseSkipped(index, true);
                       return;
                     }
+                    if (v == 'unit') {
+                      cubit.setExercisePlates(index, !exercise.plates);
+                      return;
+                    }
                     final hasLogged = exercise.sets.any((x) => x.done);
                     final ok =
                         !hasLogged ||
                         await showConfirmDialog(
                           context,
                           title: 'Remove ${exercise.name}?',
-                          content: 'Its logged sets are removed from this workout.',
+                          content:
+                              'Its logged sets are removed from this workout.',
                           confirmLabel: 'Remove',
                           destructive: true,
                         );
                     if (ok) cubit.removeExercise(index);
                   },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'skip', child: Text('Skip today')),
-                    PopupMenuItem(
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(
+                      value: 'skip',
+                      child: Text('Skip today'),
+                    ),
+                    if (exercise.kind == ExerciseKind.weighted)
+                      PopupMenuItem(
+                        value: 'unit',
+                        child: Text(
+                          exercise.plates
+                              ? 'Log in ${weightUnitLabel(useLb)} instead of plates'
+                              : 'Log in plates instead of ${weightUnitLabel(useLb)}',
+                        ),
+                      ),
+                    const PopupMenuItem(
                       value: 'remove',
                       child: Text('Remove from workout'),
                     ),
@@ -520,8 +537,9 @@ class _ExerciseCard extends StatelessWidget {
     final done = workingSets(before).toList();
     if (n > done.length) return null;
     final set = done[n - 1];
-    return '${weightShown(set.weightKg, plates: exercise.plates, useLb: useLb)} '
-        '${unitFor(plates: exercise.plates, useLb: useLb)}'
+    // In the unit it was logged in, even if the exercise has been switched.
+    return '${weightShown(set.weightKg, plates: before.plates, useLb: useLb)} '
+        '${unitFor(plates: before.plates, useLb: useLb)}'
         ' × ${set.reps}';
   }
 

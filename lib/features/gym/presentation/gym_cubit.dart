@@ -95,18 +95,24 @@ class GymCubit extends Cubit<GymState> {
 
   // Starting a workout ------------------------------------------------------
 
-  Future<void> startEmptyWorkout() => _start('Workout', const []);
+  Future<void> startEmptyWorkout() => _start('Workout', const [], null);
 
-  Future<void> startFromRoutine(Routine routine) =>
-      _start(routine.name, [for (final e in routine.exercises) _forRoutine(e)]);
+  Future<void> startFromRoutine(Routine routine) => _start(routine.name, [
+    for (final e in routine.exercises) _forRoutine(e),
+  ], routine.id);
 
-  Future<void> _start(String name, List<WorkoutExercise> exercises) async {
+  Future<void> _start(
+    String name,
+    List<WorkoutExercise> exercises,
+    String? routineId,
+  ) async {
     if (state.active != null) return;
     final session = WorkoutSession(
       id: _uuid.v4(),
       name: name,
       startedAt: DateTime.now(),
       exercises: exercises,
+      routineId: routineId,
     );
     await _repo.saveActiveSession(session);
     emit(state.copyWith(active: session));
@@ -116,7 +122,11 @@ class GymCubit extends Cubit<GymState> {
   /// prefilled with what was done in the same set last time (not yet done).
   WorkoutExercise _forRoutine(WorkoutExercise template) {
     final planned = template.sets.isEmpty ? 1 : template.sets.length;
-    final last = lastPerformance(state.sessions, template.exerciseId);
+    final found = lastPerformance(state.sessions, template.exerciseId);
+    // Numbers logged in another unit (plates vs kg) would read wrong here.
+    final last = found != null && found.plates == template.plates
+        ? found
+        : null;
     final earlier = last == null
         ? const <SetEntry>[]
         : [
@@ -151,7 +161,10 @@ class GymCubit extends Cubit<GymState> {
   /// An exercise added while working out: starts with what was done last
   /// time, or one empty set.
   WorkoutExercise _withHistory(WorkoutExercise template) {
-    final last = lastPerformance(state.sessions, template.exerciseId);
+    final found = lastPerformance(state.sessions, template.exerciseId);
+    final last = found != null && found.plates == template.plates
+        ? found
+        : null;
     final source = last == null
         ? const <SetEntry>[]
         : [
@@ -221,11 +234,122 @@ class GymCubit extends Cubit<GymState> {
     int exerciseIndex,
     int setIndex,
     SetEntry Function(SetEntry s) change,
-  ) => _updateExercise(exerciseIndex, (e) {
-    final sets = [...e.sets];
-    sets[setIndex] = change(sets[setIndex]);
-    return e.copyWith(sets: sets);
-  });
+  ) async {
+    final session = state.active;
+    if (session == null) return;
+    final before = session.exercises[exerciseIndex].sets[setIndex];
+    await _updateExercise(exerciseIndex, (e) {
+      final sets = [...e.sets];
+      sets[setIndex] = change(sets[setIndex]);
+      return e.copyWith(sets: sets);
+    });
+    final after = state.active?.exercises[exerciseIndex].sets[setIndex];
+    // A new weight on a working set is the new plan for that set.
+    if (after != null &&
+        !after.warmup &&
+        after.weightKg > 0 &&
+        after.weightKg != before.weightKg) {
+      await _carryWeightToPlan(
+        session,
+        exerciseIndex,
+        setIndex,
+        after.weightKg,
+      );
+    }
+  }
+
+  /// Writes [weight] into the plan this workout came from, on the same
+  /// exercise and the same working set (1st, 2nd...). Does nothing when the
+  /// workout has no plan, the plan no longer exists or has no such set.
+  Future<void> _carryWeightToPlan(
+    WorkoutSession session,
+    int exerciseIndex,
+    int setIndex,
+    double weight,
+  ) async {
+    final id = session.routineId;
+    if (id == null) return;
+    final routine = state.routines.where((r) => r.id == id).firstOrNull;
+    if (routine == null) return;
+    final exercise = session.exercises[exerciseIndex];
+    // Which working set this is, and which time the exercise comes up.
+    final workingNumber = exercise.sets
+        .take(setIndex + 1)
+        .where((s) => !s.warmup)
+        .length;
+    final occurrence = session.exercises
+        .take(exerciseIndex + 1)
+        .where((e) => e.exerciseId == exercise.exerciseId)
+        .length;
+    var seen = 0;
+    var changed = false;
+    final exercises = [
+      for (final planned in routine.exercises)
+        if (planned.exerciseId == exercise.exerciseId && ++seen == occurrence)
+          () {
+            var n = 0;
+            return planned.copyWith(
+              sets: [
+                for (final s in planned.sets)
+                  if (!s.warmup && ++n == workingNumber && s.weightKg != weight)
+                    () {
+                      changed = true;
+                      return s.copyWith(weightKg: weight);
+                    }()
+                  else
+                    s,
+              ],
+            );
+          }()
+        else
+          planned,
+    ];
+    if (!changed) return;
+    await _repo.saveRoutine(routine.copyWith(exercises: exercises));
+    emit(state.copyWith(routines: _repo.getRoutines()));
+  }
+
+  /// Switches an exercise between machine plates and kg/lb, in this workout,
+  /// in the exercise itself and in every plan that has it, so they all agree.
+  /// The typed numbers stay as they are; logged history keeps what it was
+  /// logged with.
+  Future<void> setExercisePlates(int exerciseIndex, bool plates) async {
+    final session = state.active;
+    if (session == null) return;
+    final id = session.exercises[exerciseIndex].exerciseId;
+    await _updateExercise(exerciseIndex, (e) => e.copyWith(plates: plates));
+    for (final routine in state.routines) {
+      if (!routine.exercises.any((e) => e.exerciseId == id)) continue;
+      await _repo.saveRoutine(
+        routine.copyWith(
+          exercises: [
+            for (final e in routine.exercises)
+              e.exerciseId == id ? e.copyWith(plates: plates) : e,
+          ],
+        ),
+      );
+    }
+    final known = state.exercises.where((e) => e.id == id).firstOrNull;
+    if (known != null && known.plates != plates) {
+      await _repo.saveExercise(
+        Exercise(
+          id: known.id,
+          name: known.name,
+          muscle: known.muscle,
+          kind: known.kind,
+          equipment: known.equipment,
+          isCustom: known.isCustom,
+          plates: plates,
+        ),
+      );
+    }
+    emit(
+      state.copyWith(
+        routines: _repo.getRoutines(),
+        exercises: await _repo.getExercises(),
+      ),
+    );
+  }
 
   Future<void> setExerciseNote(int exerciseIndex, String note) =>
       _updateExercise(exerciseIndex, (e) => e.copyWith(note: note));
@@ -307,6 +431,17 @@ class GymCubit extends Cubit<GymState> {
         sessions: [
           for (final s in state.sessions) s.id == updated.id ? updated : s,
         ]..sort((a, b) => b.startedAt.compareTo(a.startedAt)),
+      ),
+    );
+  }
+
+  /// Puts a deleted workout back, for the Undo on the delete message.
+  Future<void> restoreSession(WorkoutSession session) async {
+    await _repo.saveSession(session);
+    emit(
+      state.copyWith(
+        sessions: [...state.sessions.where((s) => s.id != session.id), session]
+          ..sort((a, b) => b.startedAt.compareTo(a.startedAt)),
       ),
     );
   }
@@ -458,7 +593,32 @@ class GymCubit extends Cubit<GymState> {
         plates: plates,
       ),
     );
-    emit(state.copyWith(exercises: await _repo.getExercises()));
+    // Plans and the workout in progress hold their own copy of the name,
+    // muscle group and unit, so carry the change into them. Finished workouts
+    // stay as they were logged.
+    WorkoutExercise sync(WorkoutExercise x) => x.exerciseId == e.id
+        ? x.copyWith(name: name.trim(), muscle: muscle, plates: plates)
+        : x;
+    for (final routine in state.routines) {
+      if (!routine.exercises.any((x) => x.exerciseId == e.id)) continue;
+      await _repo.saveRoutine(
+        routine.copyWith(
+          exercises: [for (final x in routine.exercises) sync(x)],
+        ),
+      );
+    }
+    final active = state.active;
+    if (active != null && active.exercises.any((x) => x.exerciseId == e.id)) {
+      await _update(
+        (s) => s.copyWith(exercises: [for (final x in s.exercises) sync(x)]),
+      );
+    }
+    emit(
+      state.copyWith(
+        routines: _repo.getRoutines(),
+        exercises: await _repo.getExercises(),
+      ),
+    );
   }
 
   Future<void> deleteExercise(String id) async {
