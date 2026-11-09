@@ -1,3 +1,4 @@
+import 'package:opennutritracker/features/trends/presentation/trends_range_prefs.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -36,7 +37,7 @@ class _TrendsPageState extends State<TrendsPage> {
   @override
   void initState() {
     super.initState();
-    _trendsBloc.add(const LoadTrendsEvent());
+    _trendsBloc.add(LoadTrendsEvent(rangeDays: TrendsRangePrefs.read()));
   }
 
   @override
@@ -138,9 +139,10 @@ class _RangeSelector extends StatelessWidget {
             ButtonSegment(value: 0, label: Text(S.of(context).allItemsLabel)),
           ],
           selected: {rangeDays},
-          onSelectionChanged: (s) => context
-              .read<TrendsBloc>()
-              .add(LoadTrendsEvent(rangeDays: s.first)),
+          onSelectionChanged: (s) {
+            TrendsRangePrefs.save(s.first);
+            context.read<TrendsBloc>().add(LoadTrendsEvent(rangeDays: s.first));
+          },
         ),
       ),
     );
@@ -346,6 +348,8 @@ class _CaloriesTrendCard extends StatelessWidget {
                 titlesData: const FlTitlesData(show: false),
                 lineTouchData: LineTouchData(
                   touchTooltipData: LineTouchTooltipData(
+                    fitInsideHorizontally: true,
+                    fitInsideVertically: true,
                     getTooltipItems: (spots) => [
                       for (final s in spots)
                         LineTooltipItem(
@@ -459,6 +463,8 @@ class _WaterTrendCard extends StatelessWidget {
                   titlesData: const FlTitlesData(show: false),
                   lineTouchData: LineTouchData(
                     touchTooltipData: LineTouchTooltipData(
+                      fitInsideHorizontally: true,
+                      fitInsideVertically: true,
                       getTooltipItems: (spots) => [
                         for (final s in spots)
                           LineTooltipItem(
@@ -873,6 +879,8 @@ class _PeriodAveragesCardState extends State<_PeriodAveragesCard> {
                   titlesData: const FlTitlesData(show: false),
                   barTouchData: BarTouchData(
                     touchTooltipData: BarTouchTooltipData(
+                      fitInsideHorizontally: true,
+                      fitInsideVertically: true,
                       getTooltipItem: (group, _, rod, _) => BarTooltipItem(
                         rod.toY.round().toString(),
                         text.labelMedium ?? const TextStyle(),
