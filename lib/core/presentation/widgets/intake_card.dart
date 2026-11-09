@@ -26,6 +26,16 @@ double? intakeServingCount(IntakeEntity intake) {
   return intake.amount / size;
 }
 
+/// True for an entry made with Quick add: only calories and macros were typed,
+/// so it has no weight, volume or serving to show ("100 g/ml" would be made up).
+/// Quick add stores 100 on the generic g/ml unit with no serving size.
+bool isQuickAddIntake(IntakeEntity intake) =>
+    intake.meal.mealUnit == 'gml' &&
+    intake.meal.servingQuantity == null &&
+    intake.meal.mealQuantity == '100' &&
+    intake.unit == 'g' &&
+    intake.amount == 100;
+
 /// "1", "1.5", "0.33" — up to two decimals, trailing zeros dropped.
 String formatServingCount(double count) {
   final fixed = count.toStringAsFixed(2);
@@ -119,7 +129,7 @@ class IntakeCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         )
-                      else
+                      else if (!isQuickAddIntake(intake))
                         MealValueUnitText(
                           value: intake.amount,
                           meal: intake.meal,
