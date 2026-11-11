@@ -98,23 +98,26 @@ It installs next to OpenNutriTracker under its own app id, `com.tapin.app`, and 
 
 | | | |
 | :--: | :-- | :-- |
-| 🍎 | **Food logging** | Search the Open Food Facts database, scan a barcode, or quick-add calories. Search shows your own foods first, then the online results. |
+| 🍎 | **Food logging** | Search Open Food Facts and the food databases built into the app, scan a barcode, or quick-add calories. Search shows your own foods first, then everything else. A quick add reads as "1 serving", and any food can be taken off Recents from its menu without touching your diary. |
+| 🌍 | **Foods by region** | Fruit, vegetables and dishes differ from place to place, so the app carries food databases for several countries and searches yours first: the Indian Food Composition Tables and INDB for India, CoFID for the UK, the Canadian Nutrient File, AFCD for Australia, and USDA everywhere. They work offline. See [Food databases by region](#food-databases-by-region). |
 | 🍽️ | **My foods** | Custom foods and recipes live together under one list. A recipe is a food made of ingredients, and a "New food" toggle covers both. |
 | 📓 | **Diary** | Breakfast, lunch, dinner and snacks on a calendar. Entries show the amount the way you logged it, such as "1.5 servings", not only grams. |
 | 🎯 | **Targets** | Type your calorie goal directly. Macros are three linked fields, in percent and grams, that rebalance together. |
-| 📈 | **Trends** | 7 day to all-time views with the average calories next to the chart, surplus or deficit against goal, macro averages, protein per kg, weight, streaks and best and worst days. Only finished days count, so today joins your averages tomorrow instead of dragging them down half-logged. |
+| 📈 | **Trends** | 7 day to all-time views with the average calories next to the chart, surplus or deficit against goal, macro averages, protein per kg, weight, streaks and best and worst days. Every average shows the dates it covers, and the tab opens on the range you picked last time. Only finished days count, so today joins your averages tomorrow instead of dragging them down half-logged. |
 | 💧 | **Water and fasting** | Water tracking you can switch off in Settings, plus an optional fasting timer. |
 
 ### Gym
 
 | | | |
 | :--: | :-- | :-- |
-| 📋 | **Workouts** | Build your own workouts and exercises. Tapping a workout shows what's in it, and Start begins logging. |
+| 📋 | **Workouts** | Build your own workouts and exercises. Tapping a workout shows what's in it, and Start begins logging. Change a weight, or switch an exercise between plates and kg, while you train and the workout plan follows. |
+| 🔔 | **Live workout notification** | A running workout shows in the status bar with its timer and in a lock screen card with a progress bar that fills as you tick sets. On Android 16 and later it is a Live Update; on older versions it is an ordinary ongoing notification. |
 | ⚡ | **Fast logging** | Each set shows what you lifted last time. Tick it off, or change the weight and reps first. |
 | 🛠️ | **Per-exercise details** | A machine setting, a note for next time, and an optional plate counter for barbell lifts. |
 | ↕️ | **Flexible sessions** | Skip an exercise or a single set, reorder exercises, and edit a workout after you logged it. |
-| 🧘 | **Rest days** | Log a rest day so a gap in the week is a choice you made, not a blank. Today's workout or rest day also shows on Home, above Breakfast. |
-| 📊 | **Progress** | Workouts per week and your week streak, each exercise's heaviest set from your first workout to the latest (weight × reps, no estimates), and your newest records. |
+| 🧘 | **Rest days** | Log a rest day, today or any day that has passed, so a gap in the week is a choice you made, not a blank. Today's workout or rest day also shows on Home, above Breakfast. |
+| 📊 | **Progress** | Workouts per week and your week streak, a search, sort and grouping for your exercises, and your newest records, counting more reps at your heaviest weight as well as a heavier weight. Open an exercise for a weight-and-reps chart in one of six looks (bars and line, butterfly, plateaus and more) and every workout in a list you can sort and group. Your choices are remembered. No estimates. |
+| 🗂️ | **History** | The latest workouts on the Gym tab, and a full History screen you can search, sort and group by month or workout. Deleting a workout can be undone. |
 | 🔁 | **Import and export** | Your workouts, with settings, notes and plates, go in and out as JSON. |
 
 ### Everywhere
@@ -122,6 +125,23 @@ It installs next to OpenNutriTracker under its own app id, `com.tapin.app`, and 
 - A coral, lavender and indigo Material 3 look, taken from the app icon. **Dark mode** and **Material You colours** are two separate switches in Settings, so you can have either, both or neither.
 - Imports your data from OpenNutriTracker. See [Moving over from OpenNutriTracker](#moving-over-from-opennutritracker).
 - Add products to Open Food Facts and correct wrong ones. See [Open Food Facts](#open-food-facts).
+
+## Food databases by region
+
+Searching "banana" in Mumbai, Manchester and Montreal should not return the same food. tapIn carries several food databases inside the app, so they work offline and need no account or server, and it searches the ones for your region first. The region comes from your phone, and you can pick another in **Settings → Food databases**, where each database can also be switched off and its credit read.
+
+| Database | For | Foods | Licence |
+| :-- | :-- | --: | :-- |
+| [USDA FoodData Central](https://fdc.nal.usda.gov) (SR Legacy and Foundation Foods) | everywhere | 8,004 | CC0, public domain |
+| [Indian Food Composition Tables 2017](https://www.nin.res.in/ebooks/IFCT2017.pdf), ICMR-NIN | India | 542 | Book values © ICMR-NIN; digital copy by Subhajit Sahu, AGPL-3.0 |
+| [Indian Nutrient Databank (INDB)](https://github.com/lindsayjaacks/Indian-Nutrient-Databank-INDB-) (Indian dishes) | India | 1,014 | None stated; published as "publicly and freely available" |
+| [CoFID](https://www.gov.uk/government/publications/composition-of-foods-integrated-dataset-cofid) | UK, Ireland | 2,853 | Open Government Licence v3.0 |
+| [Canadian Nutrient File](https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/nutrient-data.html) | Canada | 5,690 | Health Canada: free use with credit |
+| [Australian Food Composition Database](https://www.foodstandards.gov.au/science-data/food-nutrient-databases/afcd) | Australia, New Zealand | 1,588 | CC BY 4.0 |
+
+Open Food Facts stays on for products and barcodes. The Indian tables also keep local names, so searching "palak" finds spinach and "kela" finds banana.
+
+The databases are plain JSON files built by scripts in [`tool/food_packs`](tool/food_packs/README.md), which also explains how to add another country. Food data is reference data and can be wrong, so treat the numbers as estimates.
 
 ## Open Food Facts
 
@@ -171,7 +191,7 @@ This is the one row you can falsify yourself: your own server's access log settl
 
 **AI meal assistance** is off until you supply your own API key, or the address of a server you run, in Settings. It is marked Experimental, which is a claim about stability rather than accuracy. The model reads *language*, not nutrition: it returns a food name and, when you stated one, an amount, and every calorie and macro still comes from the food database. [How it is built](docs/ai-architecture.md) walks a typed meal and a photo end to end.
 
-**Permissions:** camera (barcode scanning, meal photos), photo library (meal photos, exports), notifications (daily reminder, fasting timer), and internet (food lookups).
+**Permissions:** camera (barcode scanning, meal photos), photo library (meal photos, exports), notifications (daily reminder, fasting timer, and the running-workout card; Android 16 also lists a non-prompting Live Updates permission for it), and internet (Open Food Facts lookups). The regional food databases are inside the app, so searching them sends nothing anywhere.
 
 ## Build from source
 
@@ -215,6 +235,8 @@ lib/
     off_account/          Open Food Facts login and uploads
     fasting/ onboarding/
   dev/         demo-data entry point, never reachable from a release build
+assets/food_packs/   the regional food databases, as JSON
+tool/food_packs/     scripts that build them from the public downloads
 test/          unit, bloc and widget tests
 ```
 
@@ -224,7 +246,7 @@ It follows OpenNutriTracker's clean-architecture split (data, domain, presentati
 
 tapIn is built on [**OpenNutriTracker**](https://github.com/simonoppowa/OpenNutriTracker) by Simon Oppowa and its contributors, and keeps its GPL-3.0 license. Most of what makes the food side work comes from them.
 
-Food data comes from [Open Food Facts](https://world.openfoodfacts.org/), available under the [ODbL](https://opendatacommons.org/licenses/odbl/). Charts use [fl_chart](https://pub.dev/packages/fl_chart).
+Food data comes from [Open Food Facts](https://world.openfoodfacts.org/), available under the [ODbL](https://opendatacommons.org/licenses/odbl/), and from the regional databases listed in [Food databases by region](#food-databases-by-region): USDA FoodData Central; the Indian Food Composition Tables 2017 (Longvah T, Ananthan R, Bhaskarachary K, Venkaiah K, ICMR-National Institute of Nutrition) as digitised by Subhajit Sahu; the Indian Nutrient Databank (Lindsay Jaacks et al.); McCance and Widdowson's Composition of Foods (UK government, Open Government Licence v3.0); the Canadian Nutrient File (Health Canada, 2015); and the Australian Food Composition Database (© Food Standards Australia New Zealand, CC BY 4.0). FSANZ and Health Canada do not endorse this app. Charts use [fl_chart](https://pub.dev/packages/fl_chart).
 
 ## Disclaimer
 
