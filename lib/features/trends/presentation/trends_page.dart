@@ -84,13 +84,18 @@ class _TrendsView extends StatelessWidget {
             _SummaryCard(
               days: state.days,
               userWeightKg: state.userWeightKg,
+              rangeDays: state.windowDays,
               palette: palette,
             ),
             const SizedBox(height: Dimens.spacing16),
             _CaloriesTrendCard(
                 days: state.days, rangeDays: state.windowDays, palette: palette),
             const SizedBox(height: Dimens.spacing16),
-            _PeriodAveragesCard(days: state.days, palette: palette),
+            _PeriodAveragesCard(
+              days: state.days,
+              rangeDays: state.windowDays,
+              palette: palette,
+            ),
             const SizedBox(height: Dimens.spacing16),
             _MacrosTrendCard(
                 days: state.days, rangeDays: state.windowDays, palette: palette),
@@ -540,6 +545,7 @@ class _MacrosTrendCard extends StatelessWidget {
         children: [
           // Average intake vs goal over the window — daily-average macros.
           Text(S.of(context).trendsDailyAverageLabel, style: text.titleMedium),
+          _RangeCaption(rangeDays: rangeDays, palette: palette),
           const SizedBox(height: Dimens.spacing16),
           for (final (label, intake, goal, color) in rows) ...[
             Row(
@@ -551,7 +557,7 @@ class _MacrosTrendCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis),
                 ),
                 const SizedBox(width: Dimens.spacing8),
-                Text('${intake.toInt()} / ${goal.toInt()} g',
+                Text('${intake.round()} / ${goal.round()} g',
                     style: text.bodySmall?.copyWith(color: palette.textStrong, fontWeight: FontWeight.w700)),
               ],
             ),
@@ -726,10 +732,12 @@ List<DaySample> _samplesOf(List<TrackedDayEntity> days) => [
 class _SummaryCard extends StatelessWidget {
   final List<TrackedDayEntity> days;
   final double userWeightKg;
+  final int rangeDays;
   final AppPalette palette;
   const _SummaryCard({
     required this.days,
     required this.userWeightKg,
+    required this.rangeDays,
     required this.palette,
   });
 
@@ -775,6 +783,7 @@ class _SummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(s.trendsSummaryTitle, style: text.titleMedium),
+          _RangeCaption(rangeDays: rangeDays, palette: palette),
           const SizedBox(height: Dimens.spacing16),
           if (tiles.isEmpty)
             Text('—', style: text.bodyMedium?.copyWith(color: palette.textMuted))
@@ -809,8 +818,13 @@ class _SummaryCard extends StatelessWidget {
 /// monthly view also shows the average weekly total (daily average × 7).
 class _PeriodAveragesCard extends StatefulWidget {
   final List<TrackedDayEntity> days;
+  final int rangeDays;
   final AppPalette palette;
-  const _PeriodAveragesCard({required this.days, required this.palette});
+  const _PeriodAveragesCard({
+    required this.days,
+    required this.rangeDays,
+    required this.palette,
+  });
 
   @override
   State<_PeriodAveragesCard> createState() => _PeriodAveragesCardState();
@@ -832,9 +846,18 @@ class _PeriodAveragesCardState extends State<_PeriodAveragesCard> {
     );
     String kcal(double v) => '${EnergyDisplay.convert(context, v).round()}';
     final locale = Localizations.localeOf(context).toString();
-    String periodLabel(DateTime start) => _monthly
-        ? DateFormat.yMMM(locale).format(start)
-        : DateFormat.MMMd(locale).format(start);
+    // The days actually counted: the window's first and last day, so a period
+    // cut off at either end shows exactly where it starts and stops.
+    final windowEnd = trendsEndDay();
+    final windowStart = DateTime(
+      windowEnd.year,
+      windowEnd.month,
+      windowEnd.day - (widget.rangeDays - 1),
+    );
+    String spanOf(DateTime start) {
+      final span = periodSpan(start, _monthly, windowStart, windowEnd);
+      return formatDateRange(span.start, span.end, locale);
+    }
 
     final maxKcal = periods.fold<double>(
       0,
@@ -912,9 +935,16 @@ class _PeriodAveragesCardState extends State<_PeriodAveragesCard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(periodLabel(p.start), style: text.labelLarge),
                           Text(
-                            s.trendsDaysLoggedShort(p.loggedDays),
+                            _monthly
+                                ? DateFormat.yMMM(locale).format(p.start)
+                                : spanOf(p.start),
+                            style: text.labelLarge,
+                          ),
+                          Text(
+                            _monthly
+                                ? '${spanOf(p.start)} · ${s.trendsDaysLoggedShort(p.loggedDays)}'
+                                : s.trendsDaysLoggedShort(p.loggedDays),
                             style: text.bodySmall
                                 ?.copyWith(color: palette.textMuted),
                           ),
@@ -943,6 +973,30 @@ class _PeriodAveragesCardState extends State<_PeriodAveragesCard> {
               ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// "Oct 14 – Nov 10": the first and last day behind the numbers on a card.
+class _RangeCaption extends StatelessWidget {
+  final int rangeDays;
+  final AppPalette palette;
+  const _RangeCaption({required this.rangeDays, required this.palette});
+
+  @override
+  Widget build(BuildContext context) {
+    if (rangeDays <= 0) return const SizedBox.shrink();
+    final end = trendsEndDay();
+    final start = DateTime(end.year, end.month, end.day - (rangeDays - 1));
+    final locale = Localizations.localeOf(context).toString();
+    return Padding(
+      padding: const EdgeInsets.only(top: Dimens.spacing4),
+      child: Text(
+        formatDateRange(start, end, locale),
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(color: palette.textMuted),
       ),
     );
   }

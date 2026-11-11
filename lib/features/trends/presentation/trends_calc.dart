@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 // Pure helpers behind the Trends cards — kept Flutter-free so they can be
 // unit-tested directly. The presentation layer decides what's "on track"
 // (it needs theme colours) and hands the resulting date set in here.
@@ -167,4 +169,38 @@ double? adherence(Iterable<DaySample> samples, {double tolerance = 0.1}) {
   if (logged.isEmpty) return null;
   final hits = logged.where((s) => (s.kcal - s.goal).abs() <= s.goal * tolerance);
   return hits.length / logged.length;
+}
+
+/// "Oct 14 – Nov 10", or a single date when both ends are the same day. The
+/// year is added whenever an end is not in the year of [now], so a window that
+/// reaches back past New Year still reads clearly.
+String formatDateRange(
+  DateTime start,
+  DateTime end,
+  String locale, {
+  DateTime? now,
+}) {
+  final thisYear = (now ?? DateTime.now()).year;
+  final withYear = start.year != thisYear || end.year != thisYear;
+  final fmt = withYear ? DateFormat.yMMMd(locale) : DateFormat.MMMd(locale);
+  final a = fmt.format(start);
+  final b = fmt.format(end);
+  return a == b ? a : '$a – $b';
+}
+
+/// The first and last day a period actually covers: its own span (a week, or a
+/// month) cut to the Trends window, so a partly covered first or last period
+/// shows only the days that were counted.
+({DateTime start, DateTime end}) periodSpan(
+  DateTime periodStart,
+  bool monthly,
+  DateTime windowStart,
+  DateTime windowEnd,
+) {
+  final naturalEnd = monthly
+      ? DateTime(periodStart.year, periodStart.month + 1, 0)
+      : DateTime(periodStart.year, periodStart.month, periodStart.day + 6);
+  final start = periodStart.isBefore(windowStart) ? windowStart : periodStart;
+  final end = naturalEnd.isAfter(windowEnd) ? windowEnd : naturalEnd;
+  return (start: start, end: end);
 }
