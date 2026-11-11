@@ -24,11 +24,24 @@ class RecentMealBloc extends Bloc<RecentMealEvent, RecentMealState> {
   /// running waits for that load rather than starting a second one.
   Future<_RecentSnapshot>? _snapshot;
 
+  /// The text last used to filter, so a removal redraws the same view.
+  String _lastQuery = '';
+
   RecentMealBloc(this._getIntakeUsecase, this._getConfigUsecase)
       : super(RecentMealInitial()) {
     on<LoadRecentMealEvent>((event, emit) async {
       _snapshot = null;
       await _emitFiltered(event.searchString, emit);
+    });
+    on<RemoveRecentMealEvent>((event, emit) async {
+      await _getIntakeUsecase.hideFromRecents(event.meal);
+      _snapshot = null;
+      await _emitFiltered(_lastQuery, emit);
+    });
+    on<RestoreRecentMealEvent>((event, emit) async {
+      await _getIntakeUsecase.showInRecents(event.meal);
+      _snapshot = null;
+      await _emitFiltered(_lastQuery, emit);
     });
     // Newest keystroke wins: an older one still waiting on the first load
     // must not overwrite the newer filter when that load completes.
@@ -42,6 +55,7 @@ class RecentMealBloc extends Bloc<RecentMealEvent, RecentMealState> {
     String searchString,
     Emitter<RecentMealState> emit,
   ) async {
+    _lastQuery = searchString;
     // Only blank to the spinner when storage actually has to be read; an
     // in-memory filter is instant and would just flicker.
     if (_snapshot == null) emit(RecentMealLoadingState());

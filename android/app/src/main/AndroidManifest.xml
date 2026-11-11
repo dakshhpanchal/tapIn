@@ -5,6 +5,11 @@
     <!-- #312: Notification reminders -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Lets the running-workout notification be shown as an Android 16 Live
+         Update (a status bar chip and a lock screen card). Not a runtime
+         permission: nothing is asked of the user, and they can switch it off
+         per app in system settings. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS"/>
     <!-- Health Connect: read-only, and only requested once workout import is
          enabled in Settings → Health sync. Nothing is ever written back.
 

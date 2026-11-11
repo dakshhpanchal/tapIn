@@ -132,6 +132,9 @@ flutter:
     # in unsplash_attribution.dart). Shipping them means Try Demo never
     # contacts Unsplash's CDN, at seed time or at render time.
     - assets/demo/meals/
+    # Food databases that ship inside the app, searched offline by region
+    # (built by tool/food_packs; licences are in the manifest and in Settings).
+    - assets/food_packs/
 
   fonts:
     - family: CustomIcons

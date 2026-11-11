@@ -12,6 +12,18 @@ import 'package:opennutritracker/core/utils/env.dart';
 @visibleForTesting
 bool? foodBackendOverride;
 
+/// Tests that want a build with no bundled databases set this to false.
+@visibleForTesting
+bool? bundledFoodsOverride;
+
+/// The food databases built into the app (assets/food_packs) are in every
+/// build, so the Food source always has something to search.
+bool get hasBundledFoods => bundledFoodsOverride ?? true;
+
+/// Whether the Food source has anything to search: the hosted backend, or the
+/// databases that ship inside the app.
+bool get hasFoodSource => hasFoodBackend || hasBundledFoods;
+
 bool get hasFoodBackend {
   if (foodBackendOverride != null) return foodBackendOverride!;
   final host = Uri.tryParse(Env.supabaseProjectUrl)?.host ?? '';

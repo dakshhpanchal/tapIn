@@ -1,6 +1,9 @@
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:get_it/get_it.dart';
 import 'package:opennutritracker/core/data/data_source/config_data_source.dart';
+import 'package:opennutritracker/core/utils/food_backend.dart';
+import 'package:opennutritracker/core/utils/hidden_recents.dart';
+import 'package:opennutritracker/features/add_meal/data/local_food/local_food_source.dart';
 import 'package:opennutritracker/core/data/data_source/custom_activity_template_data_source.dart';
 import 'package:opennutritracker/core/data/data_source/favourite_meal_data_source.dart';
 import 'package:opennutritracker/core/data/data_source/health/health_service.dart';
@@ -90,6 +93,7 @@ import 'package:opennutritracker/features/add_meal/domain/usecase/run_ai_endpoin
 import 'package:opennutritracker/core/utils/hive_db_provider.dart';
 import 'package:opennutritracker/features/gym/data/gym_repository.dart';
 import 'package:opennutritracker/features/gym/presentation/gym_cubit.dart';
+import 'package:opennutritracker/features/gym/presentation/workout_live_update.dart';
 import 'package:opennutritracker/core/utils/daily_reminder_scheduler.dart';
 import 'package:opennutritracker/core/utils/notification_service.dart';
 import 'package:opennutritracker/core/utils/profile_bootstrap.dart';
@@ -181,7 +185,11 @@ Future<void> initLocator() async {
     ),
   );
   locator.registerLazySingleton<GymCubit>(
-    () => GymCubit(locator<GymRepository>(), locator<GetConfigUsecase>()),
+    () => GymCubit(
+      locator<GymRepository>(),
+      locator<GetConfigUsecase>(),
+      liveUpdate: WorkoutLiveUpdate(),
+    ),
   );
   // One client for the app rather than one per interpret call: a fresh
   // http.Client carries its own connection pool and is never closed here,
@@ -462,6 +470,7 @@ Future<void> initLocator() async {
       calorieWidgetStore: locator<CalorieWidgetStore>(),
     ),
   );
+  locator.registerLazySingleton<LocalFoodSource>(() => LocalFoodSource());
   locator.registerLazySingleton<SearchProductsUseCase>(
     () => SearchProductsUseCase(
       locator(),
@@ -470,6 +479,10 @@ Future<void> initLocator() async {
       locator(),
       locator(),
       locator(),
+      localFoods: locator<LocalFoodSource>(),
+      // A build made without the backend's address carries a placeholder and
+      // has nothing to ask: search then runs on the bundled databases alone.
+      backendConfigured: hasFoodBackend,
     ),
   );
   // Per-navigation, matching how the AddMeal / Products / Food blocs that
@@ -486,8 +499,15 @@ Future<void> initLocator() async {
       locator<ToggleFavouriteMealUsecase>(),
     ),
   );
+  locator.registerLazySingleton<HiddenRecents>(
+    () => HiddenRecents(hiveDBProvider.gymMetaBox),
+  );
   locator.registerLazySingleton<GetIntakeUsecase>(
-    () => GetIntakeUsecase(locator(), locator()),
+    () => GetIntakeUsecase(
+      locator(),
+      locator(),
+      hiddenRecents: locator<HiddenRecents>(),
+    ),
   );
   locator.registerLazySingleton<AddIntakeUsecase>(
     () => AddIntakeUsecase(locator()),

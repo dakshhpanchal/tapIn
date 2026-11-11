@@ -3,13 +3,30 @@ import 'package:opennutritracker/core/data/repository/recipe_repository.dart';
 import 'package:opennutritracker/core/domain/entity/intake_entity.dart';
 import 'package:opennutritracker/core/domain/entity/intake_type_entity.dart';
 import 'package:opennutritracker/core/utils/calc/day_boundary_calc.dart';
+import 'package:opennutritracker/core/utils/hidden_recents.dart';
 import 'package:opennutritracker/features/add_meal/domain/entity/meal_entity.dart';
 
 class GetIntakeUsecase {
   final IntakeRepository _intakeRepository;
   final RecipeRepository _recipeRepository;
 
-  GetIntakeUsecase(this._intakeRepository, this._recipeRepository);
+  /// Foods the user took off Recents. Optional so a usecase built without it
+  /// (tests, tools) shows everything.
+  final HiddenRecents? _hiddenRecents;
+
+  GetIntakeUsecase(
+    this._intakeRepository,
+    this._recipeRepository, {
+    HiddenRecents? hiddenRecents,
+  }) : _hiddenRecents = hiddenRecents;
+
+  /// Takes a food off Recents. The diary is not touched.
+  Future<void> hideFromRecents(MealEntity meal) async =>
+      _hiddenRecents?.hide(meal);
+
+  /// Puts a food back on Recents (the Undo of [hideFromRecents]).
+  Future<void> showInRecents(MealEntity meal) async =>
+      _hiddenRecents?.show(meal);
 
   /// The day label the `getToday…` reads below filter on. The queries
   /// take a label, so the boundary has to be resolved here rather than
@@ -114,7 +131,14 @@ class GetIntakeUsecase {
   /// recipe that still exists is offered as it is now; a deleted one keeps
   /// its last snapshot, and the intakes themselves are never rewritten.
   Future<List<IntakeEntity>> getRecentIntake() async {
-    final recent = await _intakeRepository.getRecentIntake();
+    final all = await _intakeRepository.getRecentIntake();
+    final hidden = _hiddenRecents;
+    final recent = hidden == null
+        ? all
+        : [
+            for (final intake in all)
+              if (!hidden.isHidden(intake.meal, intake.dateTime)) intake,
+          ];
     return recent.map((intake) {
       final meal = intake.meal;
       if (meal.source != MealSourceEntity.recipe || meal.code == null) {

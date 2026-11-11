@@ -1,0 +1,92 @@
+{
+ "packs": [
+  {
+   "id": "afcd",
+   "name": "Australian Food Composition Database",
+   "short": "AFCD",
+   "regions": [
+    "AU",
+    "NZ"
+   ],
+   "license": "CC BY 4.0 Australia",
+   "attribution": "Australian Food Composition Database, Release 3. (c) Food Standards Australia New Zealand. Licensed under Creative Commons Attribution 4.0. FSANZ does not endorse this app.",
+   "url": "https://www.foodstandards.gov.au/science-data/food-nutrient-databases/afcd",
+   "version": "AFCD Release 3 (December 2025)",
+   "count": 1588,
+   "file": "afcd.json"
+  },
+  {
+   "id": "cnf",
+   "name": "Canadian Nutrient File",
+   "short": "CNF",
+   "regions": [
+    "CA"
+   ],
+   "license": "Health Canada terms (free use with attribution)",
+   "attribution": "Canadian Nutrient File, Health Canada, 2015. Reference only, not an official version and not medical advice.",
+   "url": "https://www.canada.ca/en/health-canada/services/food-nutrition/healthy-eating/nutrient-data.html",
+   "version": "CNF 2015",
+   "count": 5690,
+   "file": "cnf.json"
+  },
+  {
+   "id": "cofid",
+   "name": "UK Composition of Foods (CoFID)",
+   "short": "CoFID",
+   "regions": [
+    "GB",
+    "IE"
+   ],
+   "license": "Open Government Licence v3.0",
+   "attribution": "McCance and Widdowson's Composition of Foods Integrated Dataset 2021, Public Health England / Office for Health Improvement and Disparities. Contains public sector information licensed under the Open Government Licence v3.0.",
+   "url": "https://www.gov.uk/government/publications/composition-of-foods-integrated-dataset-cofid",
+   "version": "CoFID 2021",
+   "count": 2853,
+   "file": "cofid.json"
+  },
+  {
+   "id": "ifct",
+   "name": "Indian Food Composition Tables 2017 (IFCT)",
+   "short": "IFCT",
+   "regions": [
+    "IN"
+   ],
+   "kind": "foods",
+   "license": "IFCT 2017 values, ICMR-NIN; digital copy AGPL-3.0",
+   "attribution": "Indian Food Composition Tables 2017: Longvah T, Ananthan R, Bhaskarachary K, Venkaiah K. ICMR-National Institute of Nutrition, Hyderabad. Digital copy by Subhajit Sahu (github.com/nodef/ifct2017, AGPL-3.0). Values are per 100 g edible portion, as in the book.",
+   "url": "https://www.nin.res.in/ebooks/IFCT2017.pdf",
+   "version": "IFCT 2017, 542 foods",
+   "count": 542,
+   "file": "ifct.json"
+  },
+  {
+   "id": "indb",
+   "name": "Indian Nutrient Databank (INDB)",
+   "short": "INDB",
+   "kind": "dishes",
+   "regions": [
+    "IN"
+   ],
+   "license": "No licence stated; published as publicly and freely available",
+   "attribution": "Indian Nutrient Databank (INDB), Lindsay Jaacks et al., Current Developments in Nutrition, 2024. Recipe values derived from ICMR-NIN Indian Food Composition Tables 2017, with UK (CoFID) and USDA values for ingredients not in IFCT.",
+   "url": "https://github.com/lindsayjaacks/Indian-Nutrient-Databank-INDB-",
+   "version": "INDB, 1,014 recipes",
+   "count": 1014,
+   "file": "indb.json"
+  },
+  {
+   "id": "usda",
+   "name": "USDA FoodData Central",
+   "short": "USDA",
+   "regions": [
+    "*"
+   ],
+   "license": "CC0 1.0 (public domain)",
+   "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central: SR Legacy (2018) and Foundation Foods (April 2025). fdc.nal.usda.gov",
+   "url": "https://fdc.nal.usda.gov",
+   "version": "SR Legacy 2018-04 + Foundation Foods 2025-04",
+   "count": 8004,
+   "file": "usda.json"
+  }
+ ]
+}

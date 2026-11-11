@@ -16,6 +16,27 @@ class LoadRecentMealEvent extends RecentMealEvent {
   List<Object?> get props => [];
 }
 
+/// Takes a food off Recents. The diary entries are left alone, and a food
+/// that is logged again comes back.
+class RemoveRecentMealEvent extends RecentMealEvent {
+  final MealEntity meal;
+
+  const RemoveRecentMealEvent(this.meal);
+
+  @override
+  List<Object?> get props => [meal.code, meal.name];
+}
+
+/// Puts a removed food back on Recents (Undo).
+class RestoreRecentMealEvent extends RecentMealEvent {
+  final MealEntity meal;
+
+  const RestoreRecentMealEvent(this.meal);
+
+  @override
+  List<Object?> get props => [meal.code, meal.name];
+}
+
 /// Search-as-you-type over recent history, fired on every keystroke.
 /// Filters the history already in memory and only reads storage when
 /// nothing has been loaded yet.

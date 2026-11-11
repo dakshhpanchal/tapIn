@@ -21,6 +21,7 @@ class MainActivity : FlutterFragmentActivity() {
     private val localeChannelName = "com.opennutritracker/locale"
     private val healthRationaleChannelName = "com.opennutritracker/health_rationale"
     private val healthConnectChannelName = "com.opennutritracker/health_connect"
+    private val workoutLiveChannelName = "com.tapin.app/workout_live"
 
     /**
      * Scope for the Health Connect reads, which are suspend functions.
@@ -62,6 +63,38 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(healthRationalePending)
                         healthRationalePending = false
                     }
+                    else -> result.notImplemented()
+                }
+            }
+
+        // The notification for the workout in progress: a Live Update on
+        // Android 16+, an ordinary ongoing notification before that.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, workoutLiveChannelName)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "show" -> {
+                        WorkoutLiveUpdate.show(
+                            context = applicationContext,
+                            title = call.argument<String>("title") ?: "",
+                            text = call.argument<String>("text") ?: "",
+                            startedAtMillis = call.argument<Number>("startedAtMillis")?.toLong()
+                                ?: System.currentTimeMillis(),
+                            doneSets = call.argument<Number>("doneSets")?.toInt() ?: 0,
+                            totalSets = call.argument<Number>("totalSets")?.toInt() ?: 0,
+                            segments = call.argument<List<Number>>("segments")
+                                ?.map { it.toInt() } ?: emptyList(),
+                            channelName = call.argument<String>("channelName") ?: "Workout",
+                            channelDescription = call.argument<String>("channelDescription") ?: "",
+                        )
+                        result.success(null)
+                    }
+                    "cancel" -> {
+                        WorkoutLiveUpdate.cancel(applicationContext)
+                        result.success(null)
+                    }
+                    "areNotificationsEnabled" ->
+                        result.success(WorkoutLiveUpdate.areNotificationsEnabled(applicationContext))
+                    "canPromote" -> result.success(WorkoutLiveUpdate.canPromote(applicationContext))
                     else -> result.notImplemented()
                 }
             }

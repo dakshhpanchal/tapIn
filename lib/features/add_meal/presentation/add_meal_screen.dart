@@ -181,6 +181,22 @@ class _AddMealScreenState extends State<AddMealScreen> {
     _onFoodRefreshButtonPressed();
   }
 
+  /// Takes a food off Recents (the diary is untouched) and offers Undo.
+  void _removeFromRecents(MealEntity meal) {
+    _recentMealBloc.add(RemoveRecentMealEvent(meal));
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(S.of(context).recentRemovedSnack),
+        action: SnackBarAction(
+          label: S.of(context).undoLabel,
+          onPressed: () => _recentMealBloc.add(RestoreRecentMealEvent(meal)),
+        ),
+      ),
+    );
+  }
+
   void _onRecentMealsRefreshButtonPressed() {
     _recentMealBloc.add(const LoadRecentMealEvent(searchString: ""));
   }
@@ -212,7 +228,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
   bool _searchesProducts(_SearchSource s) =>
       s == _SearchSource.all || s == _SearchSource.products;
   bool _searchesFood(_SearchSource s) =>
-      hasFoodBackend && (s == _SearchSource.all || s == _SearchSource.food);
+      hasFoodSource && (s == _SearchSource.all || s == _SearchSource.food);
 
   void _onSearchSubmit(String inputText) {
     final trimmed = inputText.trim();
@@ -319,7 +335,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
             ),
             chip(_SearchSource.all, S.of(context).allItemsLabel),
             chip(_SearchSource.products, S.of(context).searchProductsPage),
-            if (hasFoodBackend)
+            if (hasFoodSource)
               chip(_SearchSource.food, S.of(context).searchFoodPage),
           ],
         ),
@@ -353,8 +369,8 @@ class _AddMealScreenState extends State<AddMealScreen> {
   }
 
   static bool _foodPending(FoodState state, String query) {
-    // Never searched without a backend, so there is nothing to wait for.
-    if (!hasFoodBackend) return false;
+    // Never searched without a source, so there is nothing to wait for.
+    if (!hasFoodSource) return false;
     if (state is FoodLoadingState) return true;
     if (query.trim().length < minQueryLength) return false;
     if (state is FoodInitial) return true;
@@ -655,11 +671,13 @@ class _AddMealScreenState extends State<AddMealScreen> {
                   child: ListView.builder(
                     itemCount: state.recentMeals.length,
                     itemBuilder: (context, index) {
+                      final meal = state.recentMeals[index];
                       return MealItemCard(
                         day: _day,
-                        mealEntity: state.recentMeals[index],
+                        mealEntity: meal,
                         addMealType: _mealType,
                         usesImperialUnits: state.usesImperialUnits,
+                        onRemoveFromRecents: () => _removeFromRecents(meal),
                       );
                     },
                   ),

@@ -150,7 +150,9 @@ class _QuickAddBottomSheetState extends State<QuickAddBottomSheet> {
     required String title,
   }) {
     // Store per-100g, intake amount = 100g, so totals math returns the
-    // exact values the user typed.
+    // exact values the user typed. The 100 g is only bookkeeping: the entry is
+    // one serving of whatever was typed, so it reads "1 serving" in the diary
+    // and opens as "1 serving", never as an invented weight.
     final nutriments = MealNutrimentsEntity(
       energyKcal100: kcal,
       carbohydrates100: carbs,
@@ -166,15 +168,15 @@ class _QuickAddBottomSheetState extends State<QuickAddBottomSheet> {
       url: null,
       mealQuantity: '100',
       mealUnit: 'gml',
-      servingQuantity: null,
-      servingUnit: 'gml',
-      servingSize: '',
+      servingQuantity: 100,
+      servingUnit: 'g',
+      servingSize: '1 serving',
       nutriments: nutriments,
       source: MealSourceEntity.custom,
     );
     return IntakeEntity(
       id: IdGenerator.getUniqueID(),
-      unit: 'g',
+      unit: 'serving',
       amount: 100,
       type: widget.intakeType,
       meal: meal,

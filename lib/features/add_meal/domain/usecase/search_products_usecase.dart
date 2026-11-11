@@ -3,9 +3,13 @@ import 'package:opennutritracker/core/data/data_source/remote_search_cache_data_
 import 'package:opennutritracker/core/data/data_source/custom_meal_data_source.dart';
 import 'package:opennutritracker/core/data/data_source/recipe_data_source.dart';
 import 'package:opennutritracker/core/data/dbo/meal_dbo.dart';
+import 'package:opennutritracker/core/domain/entity/config_entity.dart';
 import 'package:opennutritracker/core/domain/entity/recipe_entity.dart';
 import 'package:opennutritracker/core/domain/usecase/get_config_usecase.dart';
 import 'package:opennutritracker/core/domain/usecase/get_intake_usecase.dart';
+import 'package:opennutritracker/features/add_meal/data/dto/sp/sp_const.dart';
+import 'package:opennutritracker/features/add_meal/data/local_food/food_region.dart';
+import 'package:opennutritracker/features/add_meal/data/local_food/local_food_source.dart';
 import 'package:opennutritracker/features/add_meal/data/repository/products_repository.dart';
 import 'package:opennutritracker/features/add_meal/domain/entity/meal_entity.dart';
 
@@ -76,14 +80,52 @@ class SearchProductsUseCase {
   /// changes.
   void clearSearchCache() => _remoteCache.clear();
 
+  /// The food databases shipped inside the app, searched offline by region.
+  /// Null in tests and tools that only want the hosted backend.
+  final LocalFoodSource? _localFoods;
+
+  /// Whether the app has a hosted food backend to ask (a build made without
+  /// the backend's address has none). When false the backend is not called at
+  /// all, so every search is answered from this device.
+  final bool _backendConfigured;
+
+  /// The country whose databases come first; the device's by default.
+  final String? Function() _region;
+
   SearchProductsUseCase(
     this._productsRepository,
     this._getIntakeUsecase,
     this._customMealDataSource,
     this._cachedOffMealDataSource,
     this._recipeDataSource,
-    this._getConfigUsecase,
-  );
+    this._getConfigUsecase, {
+    LocalFoodSource? localFoods,
+    bool backendConfigured = true,
+    String? Function()? region,
+  }) : _localFoods = localFoods,
+       _backendConfigured = backendConfigured,
+       _region = region ?? FoodRegion.current;
+
+  /// Foods from the bundled databases that match [query], for the user's
+  /// region and the databases they left switched on.
+  Future<List<MealEntity>> _searchLocal(
+    String query,
+    ConfigEntity config,
+  ) async {
+    final local = _localFoods;
+    if (local == null || query.trim().isEmpty) return const [];
+    try {
+      return await local.search(
+        query,
+        region: _region(),
+        enabled: config.isFoodSourceEnabled,
+        limit: SPConst.maxNumberOfItems,
+      );
+    } catch (e, st) {
+      _log.warning('Bundled food search failed', e, st);
+      return const [];
+    }
+  }
 
   /// [skipRemote] limits the search to local matches (custom meals, recipes,
   /// recent intake, cached results) and does not touch the network — used for
@@ -128,11 +170,14 @@ class SearchProductsUseCase {
     bool skipRemote = false,
     bool forResolution = false,
   }) async {
+    final config = await _getConfigUsecase.getConfig();
+    // The bundled databases need no network, so even a short query that skips
+    // the backend is answered from them.
+    final local = await _searchLocal(searchString, config);
     if (skipRemote) {
-      return _buildResult(searchString, const [],
+      return _buildResult(searchString, local,
           remoteSkipped: true, cacheSource: MealSourceEntity.fdc);
     }
-    final config = await _getConfigUsecase.getConfig();
     final enabledSources = config.foodSourceToggles.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
     Future<List<MealEntity>> fetch() =>
@@ -142,16 +187,22 @@ class SearchProductsUseCase {
         );
     // The resolver scores whatever this returns and auto-selects from it, so
     // it always asks the source; remembering pages is for typing in the UI.
-    final remote = forResolution
+    final ({List<MealEntity> meals, bool failed}) remote = !_backendConfigured
+        ? (meals: const <MealEntity>[], failed: false)
+        : forResolution
         ? await _safeRemoteCall('FDC', fetch)
         : await _cachedRemote(
             'FDC|${searchString.trim().toLowerCase()}|$enabledSources',
             fetch,
             'FDC',
           );
+    // Only what the backend sent is cached: bundled foods are always at hand.
     await _cacheRemoteResults(remote.meals);
-    return _buildResult(searchString, remote.meals,
-        remoteFailed: remote.failed, cacheSource: MealSourceEntity.fdc);
+    // Bundled foods lead: they are the ones for the user's region. A backend
+    // failure only counts when there is nothing local to show either.
+    return _buildResult(searchString, [...local, ...remote.meals],
+        remoteFailed: remote.failed && local.isEmpty,
+        cacheSource: MealSourceEntity.fdc);
   }
 
   Future<void> _cacheRemoteResults(List<MealEntity> remote) async {

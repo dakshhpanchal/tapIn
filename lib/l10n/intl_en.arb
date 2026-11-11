@@ -207,6 +207,33 @@
   "additionalInfoLabelSource": "More information at\n{sourceName}",
   "@additionalInfoLabelSource": {"placeholders": {"sourceName": {"type": "String"}}},
   "foodSourcesAlwaysEnabledLabel": "Always enabled",
+  "foodSourcesRegionLabel": "Region",
+  "foodSourcesRegionAutomatic": "Automatic ({region})",
+  "@foodSourcesRegionAutomatic": {
+    "placeholders": {
+      "region": {
+        "type": "String"
+      }
+    }
+  },
+  "foodSourcesRegionOther": "Other (worldwide databases only)",
+  "foodSourcesRegionHelp": "Foods from the databases for your region are listed first, because fruit, vegetables and dishes differ from place to place.",
+  "foodSourcesBundledTitle": "Built into the app",
+  "foodSourcesBundledHelp": "These work without internet.",
+  "foodSourcesPackSubtitle": "{count} foods · {license}",
+  "@foodSourcesPackSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "license": {
+        "type": "String"
+      }
+    }
+  },
+  "foodSourcesForYourRegion": "For your region",
+  "foodSourcesOnlineTitle": "Online databases",
+  "foodSourcesCreditsTitle": "Credits",
   "foodSourcesHelpText": "Search results come from these food databases. Open Food Facts powers the product and barcode search and is always enabled.",
   "machineTranslatedNameHint": "Name translated automatically",
   "measureUnitBar": "{count, plural, one{bar} other{bars}}",
@@ -978,6 +1005,9 @@
   "quickAddTitleHint": "Title",
   "readLabel": "I have read and accept the privacy policy.",
   "recentlyAddedLabel": "Recently",
+  "recentRemoveLabel": "Remove from recents",
+  "recentRemovedSnack": "Removed from recents",
+  "undoLabel": "Undo",
   "recipeAddIngredientLabel": "Add ingredient",
   "recipeCreateCustomIngredientLabel": "Create custom ingredient",
   "recipeDeleteConfirmContent": "Past diary entries logged from this recipe will be kept.",

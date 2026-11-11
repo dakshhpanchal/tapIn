@@ -6,6 +6,7 @@ import 'package:opennutritracker/features/gym/data/gym_repository.dart';
 import 'package:opennutritracker/features/gym/domain/gym_calc.dart';
 import 'package:opennutritracker/features/gym/domain/gym_models.dart';
 import 'package:opennutritracker/features/gym/domain/gym_transfer.dart';
+import 'package:opennutritracker/features/gym/presentation/workout_live_update.dart';
 import 'package:uuid/uuid.dart';
 
 class GymState extends Equatable {
@@ -73,9 +74,22 @@ class FinishedWorkout {
 class GymCubit extends Cubit<GymState> {
   final GymRepository _repo;
   final GetConfigUsecase _config;
+  final WorkoutLiveUpdate? _liveUpdate;
   static const _uuid = Uuid();
 
-  GymCubit(this._repo, this._config) : super(const GymState());
+  /// [liveUpdate] keeps the running-workout notification in step with the
+  /// workout; without it (tests) there is none.
+  GymCubit(this._repo, this._config, {WorkoutLiveUpdate? liveUpdate})
+    : _liveUpdate = liveUpdate,
+      super(const GymState());
+
+  @override
+  void onChange(Change<GymState> change) {
+    super.onChange(change);
+    // Only once the stored workout has been read, so the app opening does not
+    // look like "no workout" and clear a notification that is still right.
+    if (change.nextState.loaded) _liveUpdate?.sync(change.nextState.active);
+  }
 
   Future<void> load() async {
     final exercises = await _repo.getExercises();

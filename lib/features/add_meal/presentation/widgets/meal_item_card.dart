@@ -26,6 +26,10 @@ class MealItemCard extends StatelessWidget {
   final bool usesImperialUnits;
   final String? favouriteSemanticsIdentifier;
 
+  /// Set only where the card is a Recents row: adds a menu with "Remove from
+  /// recents".
+  final VoidCallback? onRemoveFromRecents;
+
   const MealItemCard({
     super.key,
     required this.day,
@@ -33,6 +37,7 @@ class MealItemCard extends StatelessWidget {
     required this.addMealType,
     required this.usesImperialUnits,
     this.favouriteSemanticsIdentifier,
+    this.onRemoveFromRecents,
   });
 
   @override
@@ -103,6 +108,21 @@ class MealItemCard extends StatelessWidget {
               meal: mealEntity,
               semanticsIdentifier: favouriteSemanticsIdentifier,
             ),
+            if (onRemoveFromRecents != null)
+              Semantics(
+                identifier: 'meal-item-recent-menu',
+                child: PopupMenuButton<String>(
+                  tooltip: MaterialLocalizations.of(context).showMenuTooltip,
+                  icon: Icon(Icons.more_vert_rounded, color: palette.textMuted),
+                  onSelected: (_) => onRemoveFromRecents!(),
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'remove',
+                      child: Text(S.of(context).recentRemoveLabel),
+                    ),
+                  ],
+                ),
+              ),
             Semantics(
               identifier: 'meal-item-add',
               child: IconButton(
@@ -184,7 +204,15 @@ class MealItemCard extends StatelessWidget {
             foreground: palette.textMuted,
           )
         : null;
-    final quantity = mealEntity.mealQuantity != null
+    // A Quick add has no weight: "100 g/ml" would be made up, so it reads as
+    // one serving.
+    final quantity = mealEntity.isQuickAdd
+        ? Text(
+            '1 ${S.of(context).measureUnitServing(1)}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          )
+        : mealEntity.mealQuantity != null
         ? MealValueUnitText(
             value: double.parse(mealEntity.mealQuantity ?? "0"),
             meal: mealEntity,

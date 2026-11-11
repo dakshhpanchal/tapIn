@@ -65,6 +65,10 @@ class MealEntity extends Equatable {
   double? get scalableServingQuantity {
     final parsed = servingQuantity;
     if (parsed != null) return parsed;
+    // Entries made with Quick add before it stored a serving: calories and
+    // macros per "100 g/ml" with nothing else. They are one serving of 100,
+    // not a weight the user ever typed.
+    if (isLegacyQuickAdd) return 100;
 
     final text = servingSize;
     if (text == null) return null;
@@ -74,6 +78,27 @@ class MealEntity extends Equatable {
   }
 
   final MealSourceEntity source;
+
+  /// A Quick add, old or new: custom, on the generic g/ml unit at 100 with
+  /// either no serving at all or the "1 serving" Quick add stores now. The
+  /// 100 is only bookkeeping, so these read as one serving, never as a weight.
+  bool get isQuickAdd =>
+      isLegacyQuickAdd ||
+      (source == MealSourceEntity.custom &&
+          mealUnit == 'gml' &&
+          mealQuantity == '100' &&
+          servingQuantity == 100 &&
+          servingSize == '1 serving');
+
+  /// A Quick add made before Quick add stored a serving: custom, on the
+  /// generic g/ml unit at 100, with no serving size at all.
+  bool get isLegacyQuickAdd =>
+      source == MealSourceEntity.custom &&
+      mealUnit == 'gml' &&
+      servingUnit == 'gml' &&
+      mealQuantity == '100' &&
+      servingQuantity == null &&
+      (servingSize ?? '').isEmpty;
 
   /// Backend food_source.code ('fdc_sr_legacy', 'bls', 'indb'...) for
   /// meals from the Supabase backend, null for OFF/custom/recipe meals
