@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:opennutritracker/core/utils/app_const.dart';
 import 'package:opennutritracker/core/utils/ont_http_client.dart';
 import 'package:opennutritracker/features/add_meal/domain/entity/meal_entity.dart';
+import 'package:opennutritracker/features/add_meal/domain/entity/meal_nutriments_entity.dart';
 import 'package:opennutritracker/features/off_account/data/off_account_storage.dart';
 import 'package:opennutritracker/features/scanner/data/off_unavailable_exception.dart';
 
@@ -140,6 +141,62 @@ class OffProductSubmission {
     nutrient('salt', salt, 'g');
     return fields;
   }
+}
+
+/// [meal] with what was sent to Open Food Facts applied, so the scanner and
+/// the meal page show the corrected values at once: they keep a local copy
+/// of each product, which would otherwise go on showing the old figures
+/// (Open Food Facts itself can take a while to serve the edit).
+MealEntity applySubmission(MealEntity meal, OffProductSubmission sent) {
+  final n = meal.nutriments;
+  final salt = sent.salt;
+  return MealEntity(
+    code: meal.code,
+    name: sent.name.trim().isEmpty ? meal.name : sent.name.trim(),
+    brands: sent.brands.trim().isEmpty ? meal.brands : sent.brands.trim(),
+    thumbnailImageUrl: meal.thumbnailImageUrl,
+    mainImageUrl: meal.mainImageUrl,
+    url: meal.url,
+    mealQuantity: meal.mealQuantity,
+    mealUnit: meal.mealUnit,
+    servingQuantity: meal.servingQuantity,
+    servingUnit: meal.servingUnit,
+    servingSize: meal.servingSize,
+    nutriments: MealNutrimentsEntity(
+      energyKcal100: sent.energyKcal ?? n.energyKcal100,
+      carbohydrates100: sent.carbohydrates ?? n.carbohydrates100,
+      fat100: sent.fat ?? n.fat100,
+      proteins100: sent.proteins ?? n.proteins100,
+      sugars100: sent.sugars ?? n.sugars100,
+      saturatedFat100: sent.saturatedFat ?? n.saturatedFat100,
+      fiber100: sent.fiber ?? n.fiber100,
+      monounsaturatedFat100: n.monounsaturatedFat100,
+      polyunsaturatedFat100: n.polyunsaturatedFat100,
+      transFat100: n.transFat100,
+      cholesterol100: n.cholesterol100,
+      sodium100: salt == null ? n.sodium100 : salt / 2.5 * 1000,
+      potassium100: n.potassium100,
+      magnesium100: n.magnesium100,
+      calcium100: n.calcium100,
+      iron100: n.iron100,
+      zinc100: n.zinc100,
+      phosphorus100: n.phosphorus100,
+      vitaminA100: n.vitaminA100,
+      vitaminC100: n.vitaminC100,
+      vitaminD100: n.vitaminD100,
+      vitaminB6100: n.vitaminB6100,
+      vitaminB12100: n.vitaminB12100,
+      niacin100: n.niacin100,
+    ),
+    source: meal.source,
+    backendSource: meal.backendSource,
+    machineTranslatedName: meal.machineTranslatedName,
+    servingSizeIsLocalized: meal.servingSizeIsLocalized,
+    portions: meal.portions,
+    portionsUnavailable: meal.portionsUnavailable,
+    localImagePath: meal.localImagePath,
+    detailed: meal.detailed,
+  );
 }
 
 /// Logs in to Open Food Facts and sends products to it.

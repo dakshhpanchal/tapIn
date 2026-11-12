@@ -3,6 +3,9 @@ import 'package:opennutritracker/core/styles/dimens.dart';
 import 'package:opennutritracker/core/utils/app_const.dart';
 import 'package:opennutritracker/core/utils/locator.dart';
 import 'package:opennutritracker/features/off_account/data/off_account_storage.dart';
+import 'package:opennutritracker/core/data/data_source/remote_search_cache_data_source.dart';
+import 'package:opennutritracker/core/data/dbo/meal_dbo.dart';
+import 'package:opennutritracker/features/add_meal/domain/entity/meal_entity.dart';
 import 'package:opennutritracker/features/off_account/data/off_contribution_service.dart';
 import 'package:opennutritracker/features/off_account/presentation/off_account_dialog.dart';
 import 'package:opennutritracker/features/scanner/data/off_unavailable_exception.dart';
@@ -176,19 +179,36 @@ class _OffContributionScreenState extends State<OffContributionScreen> {
                   : 'Added with ${AppConst.userAgentAppName}')
             : note,
       );
+      await _updateLocalCopy(product);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Sent to Open Food Facts. Thank you!')),
       );
       Navigator.of(context).pop(true);
     } on OffLoginRejectedException {
-      _fail('Open Food Facts rejected your login. Log in again in Settings > Data.');
+      _fail(
+        'Open Food Facts rejected your login. Log in again in Settings > Data.',
+      );
     } on OffUnavailableException {
       _fail('Open Food Facts is busy right now. Try again in a minute.');
     } on OffContributionException catch (e) {
       _fail('Open Food Facts did not accept it: ${e.message}');
     } catch (_) {
       _fail('Could not reach Open Food Facts. Check your connection.');
+    }
+  }
+
+  /// Puts what was sent into the app's own copy of the product, so a scan
+  /// shows the corrected figures straight away.
+  Future<void> _updateLocalCopy(OffProductSubmission sent) async {
+    try {
+      final cache = locator<RemoteSearchCacheDataSource>();
+      final cached = cache.getDetailedByBarcode(sent.barcode);
+      if (cached == null) return;
+      final updated = applySubmission(MealEntity.fromMealDBO(cached), sent);
+      await cache.cache(MealDBO.fromMealEntity(updated));
+    } catch (_) {
+      // The upload worked; a stale local copy is not worth an error.
     }
   }
 
@@ -230,7 +250,9 @@ class _OffContributionScreenState extends State<OffContributionScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.isCorrection ? 'Correct on Open Food Facts' : 'Share on Open Food Facts',
+          widget.isCorrection
+              ? 'Correct on Open Food Facts'
+              : 'Share on Open Food Facts',
         ),
       ),
       body: Form(
