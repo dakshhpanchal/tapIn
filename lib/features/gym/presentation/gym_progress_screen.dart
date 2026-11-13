@@ -231,7 +231,8 @@ class _StrengthCardState extends State<_StrengthCard> {
         break;
       case _StrengthSort.name:
         list.sort(
-          (a, b) => _nameOf(a).toLowerCase().compareTo(_nameOf(b).toLowerCase()),
+          (a, b) =>
+              _nameOf(a).toLowerCase().compareTo(_nameOf(b).toLowerCase()),
         );
       case _StrengthSort.mostWorkouts:
         list.sort((a, b) {
@@ -393,7 +394,9 @@ class _GainRow extends StatelessWidget {
       change = 'Same';
       up = false;
     } else {
-      change = weightDiff < 0 ? '−${shown(-weightDiff)} $unit' : '$repDiff reps';
+      change = weightDiff < 0
+          ? '−${shown(-weightDiff)} $unit'
+          : '$repDiff reps';
       up = false;
     }
     return InkWell(
@@ -423,9 +426,7 @@ class _GainRow extends StatelessWidget {
                         : '${setText(gain.first)} → ${setText(gain.latest)}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: text.bodySmall?.copyWith(
-                      color: mutedColor(context),
-                    ),
+                    style: text.bodySmall?.copyWith(color: mutedColor(context)),
                   ),
                 ],
               ),

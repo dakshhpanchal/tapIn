@@ -136,6 +136,9 @@ void main() {
     expect(find.text('20 kg · 2'), findsOneWidget);
 
     await choose(tester, 'Group', 'No grouping');
-    expect(find.text('October 2026 · 2'), findsNothing); // no group headers left
+    expect(
+      find.text('October 2026 · 2'),
+      findsNothing,
+    ); // no group headers left
   });
 }

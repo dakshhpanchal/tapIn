@@ -68,8 +68,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
             : q.isEmpty && byDate)
           e,
     ];
-    int newestFirst((WorkoutSession?, String?) a, (WorkoutSession?, String?) b) =>
-        _dateOf(b).compareTo(_dateOf(a));
+    int newestFirst(
+      (WorkoutSession?, String?) a,
+      (WorkoutSession?, String?) b,
+    ) => _dateOf(b).compareTo(_dateOf(a));
     switch (_sort) {
       case _HistorySort.newest:
         list.sort(newestFirst);

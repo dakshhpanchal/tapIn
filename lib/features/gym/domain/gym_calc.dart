@@ -206,7 +206,11 @@ List<WeekCount> workoutsPerWeek(
   return [
     for (var i = weeks - 1; i >= 0; i--)
       (
-        weekStart: DateTime(thisWeek.year, thisWeek.month, thisWeek.day - 7 * i),
+        weekStart: DateTime(
+          thisWeek.year,
+          thisWeek.month,
+          thisWeek.day - 7 * i,
+        ),
         count:
             counts[DateTime(
               thisWeek.year,
@@ -322,7 +326,9 @@ List<ExerciseGain> exerciseGains(
     final c = change(b).compareTo(change(a));
     return c != 0
         ? c
-        : (b.latest.reps - b.first.reps).compareTo(a.latest.reps - a.first.reps);
+        : (b.latest.reps - b.first.reps).compareTo(
+            a.latest.reps - a.first.reps,
+          );
   });
   if (!includeSingle) return gains;
   final single = <ExerciseGain>[

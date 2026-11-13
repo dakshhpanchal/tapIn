@@ -58,7 +58,10 @@ class _SessionDetail extends StatelessWidget {
               }
             },
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'routine', child: Text('Add to My workouts')),
+              PopupMenuItem(
+                value: 'routine',
+                child: Text('Add to My workouts'),
+              ),
               PopupMenuItem(value: 'delete', child: Text('Delete workout')),
             ],
           ),

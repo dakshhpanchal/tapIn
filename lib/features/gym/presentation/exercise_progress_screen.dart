@@ -178,7 +178,11 @@ class _HistoryList extends StatefulWidget {
 }
 
 class _HistoryListState extends State<_HistoryList> {
-  _Sort _sort = ListPrefs.restore(_Sort.values, 'gym_exercise_sort', _Sort.newest);
+  _Sort _sort = ListPrefs.restore(
+    _Sort.values,
+    'gym_exercise_sort',
+    _Sort.newest,
+  );
   _Group _group = ListPrefs.restore(
     _Group.values,
     'gym_exercise_group',

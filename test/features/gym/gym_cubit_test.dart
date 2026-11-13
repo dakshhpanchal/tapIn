@@ -166,6 +166,219 @@ void main() {
     expect(cubit.state.exercises.any((e) => e.id == squat.id), isFalse);
   });
 
+  test('edits to a running workout carry into its plan', () async {
+    final cubit = await loaded();
+    final bench = cubit.state.exercises.first;
+    final squat = await cubit.createExercise('Squat');
+    final row = await cubit.createExercise('Row');
+    await cubit.saveRoutine(
+      name: 'Upper',
+      exercises: [
+        WorkoutExercise.of(
+          bench,
+          sets: const [
+            SetEntry(weightKg: 40, reps: 8),
+            SetEntry(weightKg: 40, reps: 8),
+          ],
+        ).copyWith(setting: '3', planNote: 'elbows in'),
+        WorkoutExercise.of(
+          squat,
+          sets: const [SetEntry(weightKg: 60, reps: 5)],
+        ),
+      ],
+    );
+    Routine plan() => cubit.state.routines.single;
+    await cubit.startFromRoutine(plan());
+
+    // Weight and reps of a set.
+    await cubit.updateSet(0, 1, (s) => s.copyWith(weightKg: 45, reps: 9));
+    expect(plan().exercises[0].sets.map((s) => s.weightKg), [40, 45]);
+    expect(plan().exercises[0].sets.map((s) => s.reps), [
+      8,
+      8,
+    ]); // reps stay planned
+    expect(plan().exercises[1].sets.single.weightKg, 60); // untouched
+
+    // Ticking a set done is not a plan change, and nothing done is stored.
+    await cubit.updateSet(0, 0, (s) => s.copyWith(done: true));
+    expect(plan().exercises[0].sets.every((s) => !s.done), isTrue);
+
+    // Machine setting and plates/kg.
+    await cubit.setExerciseSetting(0, '5');
+    expect(plan().exercises[0].setting, '5');
+    expect(plan().exercises[0].planNote, 'elbows in');
+    await cubit.setExercisePlates(1, true);
+    expect(plan().exercises[1].plates, isTrue);
+
+    // Sets added and removed.
+    await cubit.addSet(1);
+    expect(plan().exercises[1].sets, hasLength(2));
+    // Declining to update the plan keeps the set there.
+    await cubit.removeSet(0, 0);
+    expect(plan().exercises[0].sets, hasLength(2));
+    await cubit.addSet(0);
+    await cubit.removeSet(0, 1, prune: true);
+    expect(plan().exercises[0].sets, hasLength(1));
+    expect(plan().exercises[0].sets.map((s) => s.weightKg), [45]);
+
+    // Exercises added, reordered, removed.
+    await cubit.addExercise(row);
+    expect(plan().exercises.map((e) => e.name), [
+      'Bench Press',
+      'Squat',
+      'Row',
+    ]);
+    await cubit.reorderExercises([2, 0, 1]);
+    expect(plan().exercises.map((e) => e.name), [
+      'Row',
+      'Bench Press',
+      'Squat',
+    ]);
+    await cubit.removeExercise(1); // plan not updated
+    expect(plan().exercises.map((e) => e.name), [
+      'Row',
+      'Bench Press',
+      'Squat',
+    ]);
+    await cubit.removeExercise(1, prune: true); // now also from the plan
+    expect(plan().exercises.map((e) => e.name), ['Row']);
+    await cubit.addExercise(squat);
+    expect(plan().exercises.map((e) => e.name), ['Row', 'Squat']);
+
+    // Skipped, then taken out of the plan too.
+    await cubit.setExerciseSkipped(1, true);
+    expect(plan().exercises, hasLength(2));
+    await cubit.removeFromPlan(1);
+    expect(plan().exercises.map((e) => e.name), ['Row']);
+    await cubit.setExerciseNote(0, 'x');
+    expect(plan().exercises.map((e) => e.name), ['Row']);
+
+    // A workout with no plan changes no plan.
+    await cubit.discardWorkout();
+    await cubit.startEmptyWorkout();
+    await cubit.addExercise(row);
+    expect(plan().exercises.map((e) => e.name), ['Row']);
+  });
+
+  test('plans are caught up with the last logged workouts once', () async {
+    final cubit = await loaded();
+    final bench = cubit.state.exercises.first;
+    await cubit.saveRoutine(
+      name: 'Push',
+      exercises: [
+        WorkoutExercise.of(
+          bench,
+          sets: const [SetEntry(weightKg: 40, reps: 8)],
+        ).copyWith(setting: '2'),
+      ],
+    );
+    await repo.saveSession(
+      WorkoutSession(
+        id: 'old',
+        name: 'Push',
+        startedAt: DateTime(2026, 11, 1),
+        endedAt: DateTime(2026, 11, 1, 1),
+        exercises: [
+          WorkoutExercise.of(
+            bench,
+            sets: const [SetEntry(weightKg: 45, reps: 8, done: true)],
+          ).copyWith(setting: '4'),
+        ],
+      ),
+    );
+    // As on a phone that has not run the catch-up yet.
+    await Hive.box<String>('meta').delete('plansCaughtUp2');
+    final again = GymCubit(repo, _FakeConfig());
+    await again.load();
+    final e = again.state.routines.single.exercises.single;
+    expect(e.sets.single.weightKg, 45);
+    expect(e.setting, '4');
+    // Only once: a later plan edit is not overwritten at the next start.
+    await again.saveRoutine(
+      id: again.state.routines.single.id,
+      name: 'Push',
+      exercises: [
+        e.copyWith(sets: const [SetEntry(weightKg: 50, reps: 8)]),
+      ],
+    );
+    final third = GymCubit(repo, _FakeConfig());
+    await third.load();
+    expect(
+      third.state.routines.single.exercises.single.sets.single.weightKg,
+      50,
+    );
+  });
+
+  test('catch-up follows a swapped exercise in the last workout', () async {
+    final cubit = await loaded();
+    final bench = cubit.state.exercises.first;
+    final fly = await cubit.createExercise('Pec Deck');
+    final row = await cubit.createExercise('Row');
+    await cubit.saveRoutine(
+      name: 'Upper',
+      exercises: [
+        WorkoutExercise.of(fly, sets: const [SetEntry(weightKg: 30, reps: 12)]),
+        WorkoutExercise.of(row, sets: const [SetEntry(weightKg: 50, reps: 10)]),
+      ],
+    );
+    final planId = cubit.state.routines.single.id;
+    await repo.saveSession(
+      WorkoutSession(
+        id: 's1',
+        name: 'Upper',
+        routineId: planId,
+        startedAt: DateTime(2026, 11, 1),
+        endedAt: DateTime(2026, 11, 1, 1),
+        exercises: [
+          WorkoutExercise.of(
+            bench,
+            sets: const [SetEntry(weightKg: 60, reps: 8, done: true)],
+          ),
+          WorkoutExercise.of(
+            row,
+            sets: const [SetEntry(weightKg: 55, reps: 10, done: true)],
+          ),
+        ],
+      ),
+    );
+    await Hive.box<String>('meta').delete('plansCaughtUp2');
+    final again = GymCubit(repo, _FakeConfig());
+    await again.load();
+    final plan = again.state.routines.single.exercises;
+    expect(plan.map((e) => e.name), ['Bench Press', 'Row']);
+    expect(plan[0].sets.single.weightKg, 60);
+    expect(plan[1].sets.single.weightKg, 55);
+  });
+
+  test('finishing a workout leaves its weights in the plan', () async {
+    final cubit = await loaded();
+    final bench = cubit.state.exercises.first;
+    await cubit.saveRoutine(
+      name: 'Push',
+      exercises: [
+        WorkoutExercise.of(
+          bench,
+          sets: const [SetEntry(weightKg: 40, reps: 8)],
+        ),
+      ],
+    );
+    await cubit.startFromRoutine(cubit.state.routines.single);
+    await cubit.updateSet(
+      0,
+      0,
+      (s) => s.copyWith(weightKg: 45, reps: 8, done: true),
+    );
+    await cubit.finishWorkout();
+    // Next workout starts at 45 (from history), nothing is changed by hand.
+    await cubit.startFromRoutine(cubit.state.routines.single);
+    expect(cubit.state.active!.exercises.single.sets.single.weightKg, 45);
+    await cubit.finishWorkout();
+    expect(
+      cubit.state.routines.single.exercises.single.sets.single.weightKg,
+      45,
+    );
+  });
+
   test('a planned workout starts with its planned sets, prefilled', () async {
     final cubit = await loaded();
     final bench = cubit.state.exercises.first;

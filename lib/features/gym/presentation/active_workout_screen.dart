@@ -379,6 +379,13 @@ class _ExerciseCard extends StatelessWidget {
                   onSelected: (v) async {
                     if (v == 'skip') {
                       cubit.setExerciseSkipped(index, true);
+                      if (await askUpdatePlan(
+                        context,
+                        cubit,
+                        'Take ${exercise.name} out of it?',
+                      )) {
+                        await cubit.removeFromPlan(index);
+                      }
                       return;
                     }
                     if (v == 'unit') {
@@ -396,7 +403,13 @@ class _ExerciseCard extends StatelessWidget {
                           confirmLabel: 'Remove',
                           destructive: true,
                         );
-                    if (ok) cubit.removeExercise(index);
+                    if (!ok || !context.mounted) return;
+                    final prune = await askUpdatePlan(
+                      context,
+                      cubit,
+                      'Take ${exercise.name} out of it?',
+                    );
+                    await cubit.removeExercise(index, prune: prune);
                   },
                   itemBuilder: (_) => [
                     const PopupMenuItem(
@@ -495,7 +508,14 @@ class _ExerciseCard extends StatelessWidget {
                   s,
                   (set) => set.copyWith(warmup: !set.warmup),
                 ),
-                onDelete: () => cubit.removeSet(index, s),
+                onDelete: () async {
+                  final prune = await askUpdatePlan(
+                    context,
+                    cubit,
+                    'Remove this set from it?',
+                  );
+                  await cubit.removeSet(index, s, prune: prune);
+                },
               ),
             const SizedBox(height: Dimens.spacing4),
             TextButton.icon(
@@ -764,4 +784,33 @@ class _LineFieldState extends State<_LineField> {
       ),
     );
   }
+}
+
+/// Asks whether a change made today should also be made in the plan this
+/// workout came from. False (without asking) when there is no such plan.
+Future<bool> askUpdatePlan(
+  BuildContext context,
+  GymCubit cubit,
+  String question,
+) async {
+  final plan = cubit.activePlan;
+  if (plan == null) return false;
+  final result = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text('Update ${plan.name} too?'),
+      content: Text(question),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Only today'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: const Text('Update plan'),
+        ),
+      ],
+    ),
+  );
+  return result ?? false;
 }

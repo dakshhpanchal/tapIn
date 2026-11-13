@@ -65,6 +65,12 @@ class GymRepository {
   Future<void> saveActiveSession(WorkoutSession s) =>
       _metaBox.put(_activeKey, s.encode());
 
+  static const _plansCaughtUpKey = 'plansCaughtUp2';
+
+  /// Whether plans were brought up to date with the last logged workouts once.
+  bool get plansCaughtUp => _metaBox.get(_plansCaughtUpKey) == '1';
+  Future<void> markPlansCaughtUp() => _metaBox.put(_plansCaughtUpKey, '1');
+
   Future<void> clearActiveSession() => _metaBox.delete(_activeKey);
 
   // Rest days ---------------------------------------------------------------

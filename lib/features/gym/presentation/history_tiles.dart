@@ -24,7 +24,6 @@ List<(WorkoutSession?, String?)> historyEntries(GymState state) {
   return [for (final e in entries) e.$2];
 }
 
-
 class SessionTile extends StatelessWidget {
   final WorkoutSession session;
   final bool useLb;
@@ -71,7 +70,6 @@ class SessionTile extends StatelessWidget {
     );
   }
 }
-
 
 class RestDayTile extends StatelessWidget {
   final String dayKey;
